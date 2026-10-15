@@ -169,6 +169,24 @@
   .box-warn { border-left-color: #ff7b72; }
   .box-info { border-left-color: var(--accent); }
   .box-ok { border-left-color: var(--green); }
+  .box-tip {
+    border-left-color: var(--purple);
+    background: #1a1826;
+  }
+  .box-tip::before {
+    content: "TIP: ";
+    color: var(--purple);
+    font-weight: bold;
+  }
+  .box-why {
+    border-left-color: var(--green);
+    background: #142019;
+  }
+  .box-why::before {
+    content: "PERCHE': ";
+    color: var(--green);
+    font-weight: bold;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -211,12 +229,18 @@
     padding: 20px;
     font-style: italic;
   }
+
+  /* Commenti inline nel codice */
+  .comment {
+    color: #8b949e;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
 
 <h1>CTF Blue Team - Guida Rapida</h1>
-<p class="subtitle">Tutti gli argomenti del manuale - Parte 3</p>
+<p class="subtitle">Tutti gli argomenti del manuale - Parte 3 (con commenti e spiegazioni)</p>
 
 <div class="search-container">
   <input type="text" id="searchInput" placeholder="Cerca comando, tool, tecnica... (es. volatility, sysmon, 4624)" autocomplete="off">
@@ -241,18 +265,21 @@
   <h2>Introduzione al Blue Team</h2>
   <div class="box box-info">Il Blue Team difende, investiga e ricostruisce. In una CTF significa analizzare artefatti, trovare flag nascoste nei log, nei dump, nei PCAP, nelle immagini disco.</div>
 
+  <div class="box box-why">In una CTF Blue Team non devi "attaccare" nulla: devi capire cosa è successo. Leggi la traccia con attenzione: ti dicono sempre cosa cercare (una flag, un IP, un nome utente, un timestamp).</div>
+
   <h3>Framework di riferimento</h3>
   <ul>
-    <li><b>NIST SP 800-61</b>: ciclo IR in 4 fasi: Preparation, Detection &amp; Analysis, Containment/Eradication/Recovery, Post-Incident Activity</li>
-    <li><b>MITRE ATT&amp;CK</b>: tassonomia di tecniche attacco per mappare cosa cercare</li>
-    <li><b>Pyramid of Pain</b>: hash &lt; IP &lt; dominio &lt; artefatti &lt; tool &lt; TTP</li>
-    <li><b>Diamond Model</b>: Adversary, Capability, Infrastructure, Victim</li>
+    <li><b>NIST SP 800-61</b>: ciclo IR in 4 fasi. Preparation (preparati prima), Detection &amp; Analysis (accorgiti e capisci), Containment/Eradication/Recovery (blocca, elimina, ripristina), Post-Incident (impara). In CTF usi solo Detection &amp; Analysis.</li>
+    <li><b>MITRE ATT&amp;CK</b>: catalogo di tecniche attacco. Ti dice cosa cercare. Es. T1059.001 = PowerShell usato da attaccante.</li>
+    <li><b>Pyramid of Pain</b>: hash &lt; IP &lt; dominio &lt; artefatti &lt; tool &lt; TTP. Più sali, più è difficile per l'attaccante cambiare. In CTF cerca TTP e artefatti, non solo hash.</li>
+    <li><b>Diamond Model</b>: Adversary (chi), Capability (cosa usa), Infrastructure (da dove), Victim (chi subisce). Utile per strutturare il report.</li>
   </ul>
 
   <h3>Ordine di volatilità (RFC 3227)</h3>
+  <div class="box box-why">Regola d'oro: acquisisci prima le cose che si perdono prima. Se spegni il PC, perdi RAM, connessioni attive, processi. Il disco resta.</div>
   <ol>
-    <li>Registri CPU, cache</li>
-    <li>Memoria RAM</li>
+    <li>Registri CPU, cache (si perdono in millisecondi)</li>
+    <li>Memoria RAM (si perde allo spegnimento)</li>
     <li>Stato rete (connessioni attive)</li>
     <li>Processi attivi</li>
     <li>File system, file cancellati</li>
@@ -262,12 +289,13 @@
   </ol>
 
   <h3>Ordine operativo in CTF</h3>
+  <div class="box box-tip">In CTF non hai un incidente reale: hai un pacchetto di artefatti. Parti sempre dall'overview prima di entrare nei dettagli. 5 minuti di overview fanno risparmiare 30 minuti di analisi sbagliata.</div>
   <ol>
-    <li>Leggi la traccia: cosa ti danno? (PCAP, dump, log, disk image)</li>
-    <li>Identifica la fonte primaria e inizia da lì</li>
-    <li>Usa Statistics/Overview prima di entrare nei dettagli</li>
-    <li>Documenta ogni comando e output</li>
-    <li>Correla fonti diverse per ricostruire la timeline</li>
+    <li><b>Leggi la traccia</b>: cosa ti danno? (PCAP, dump, log, disk image). Cosa devi trovare? (flag, IP, utente, timestamp)</li>
+    <li><b>Identifica la fonte primaria</b> e inizia da lì. Se hai un PCAP e un dump di memoria, inizia dal PCAP (più facile da navigare).</li>
+    <li><b>Overview prima dei dettagli</b>: in Wireshark Statistics, in Volatility windows.info, in TSK mmls. Guarda il quadro generale.</li>
+    <li><b>Documenta</b> ogni comando e output. In CTF la flag va consegnata, ma il writeup vale punti bonus e ti fa capire cosa hai fatto.</li>
+    <li><b>Correla</b> fonti diverse per ricostruire la timeline. Un IP nel PCAP + un logon nel log + un processo in memoria = storia completa.</li>
   </ol>
   <a class="back-top" href="#">Torna all'indice</a>
 </section>
@@ -275,154 +303,223 @@
 <!-- NETWORK -->
 <section id="network">
   <h2>3.1 Network Forensics</h2>
-  <div class="box box-info">Il PCAP è la fonte di verità: registra tutto ciò che è transitato in rete.</div>
+  <div class="box box-info">Il PCAP è la fonte di verità: registra tutto ciò che è transitato in rete. Se c'è un PCAP, inizia da lì.</div>
+
+  <div class="box box-why">Perché il PCAP è la fonte più affidabile: un attaccante può cancellare i log del sistema, ma se il traffico è stato catturato su un sensore fuori dal suo controllo, quella copia è intoccabile. In CTF il PCAP è quasi sempre la fonte primaria.</div>
 
   <h3>Anatomia di un pacchetto</h3>
+  <div class="box box-why">Ogni pacchetto è stratificato come una cipolla. Wireshark ti mostra tutti gli strati. Sapere cosa c'è in ogni strato ti dice cosa cercare.</div>
   <ul>
-    <li><b>L2 Ethernet</b>: MAC sorgente/destinazione, EtherType</li>
-    <li><b>L3 IP</b>: IP sorgente/destinazione, TTL, Protocol (TCP=6, UDP=17, ICMP=1)</li>
-    <li><b>L4 TCP/UDP</b>: porte, flag (SYN, ACK, FIN, RST), sequence number</li>
-    <li><b>L7 Application</b>: HTTP, DNS, TLS, SMB, Kerberos, LDAP</li>
+    <li><b>L2 Ethernet</b>: MAC sorgente/destinazione, EtherType. Raramente utile in CTF (a meno che non cerchi MAC spoofing).</li>
+    <li><b>L3 IP</b>: IP sorgente/destinazione, TTL, Protocol (TCP=6, UDP=17, ICMP=1). Il TTL ti dice quanti hop ha fatto il pacchetto: TTL 64 = locale, TTL 128 = Windows, TTL 255 = router.</li>
+    <li><b>L4 TCP/UDP</b>: porte, flag (SYN, ACK, FIN, RST), sequence number. Le porte ti dicono il servizio: 22=SSH, 80=HTTP, 443=HTTPS, 445=SMB, 3389=RDP, 53=DNS.</li>
+    <li><b>L7 Application</b>: HTTP, DNS, TLS, SMB, Kerberos, LDAP. Qui c'è il contenuto vero. Filtra per protocollo per restringere.</li>
   </ul>
 
   <h3>Wireshark - Primo approccio</h3>
+  <div class="box box-tip">Non aprire un PCAP e iniziare a scorrere pacchetti. Perdi ore. Fai sempre l'overview: Statistics &gt; Protocol Hierarchy ti dice subito cosa c'è dentro.</div>
   <ol>
-    <li><b>Statistics &gt; Capture File Properties</b>: durata, pacchetti, volume</li>
-    <li><b>Statistics &gt; Protocol Hierarchy</b>: gerarchia protocolli</li>
-    <li><b>Statistics &gt; Conversations</b>: coppie IP/porta con volume</li>
-    <li><b>Statistics &gt; Endpoints</b>: host più attivi</li>
+    <li><b>Statistics &gt; Capture File Properties</b>: durata, numero pacchetti, volume. Ti dice se il PCAP è piccolo (analizzabile a mano) o grande (serve filtrare).</li>
+    <li><b>Statistics &gt; Protocol Hierarchy</b>: gerarchia protocolli. Se vedi 90% TLS, sai che dovrai lavorare sui metadata TLS, non sul contenuto. Se vedi DNS anomalo, parti da lì.</li>
+    <li><b>Statistics &gt; Conversations</b>: coppie IP/porta con volume. Le conversazioni più voluminose sono quelle da investigare per prime.</li>
+    <li><b>Statistics &gt; Endpoints</b>: host più attivi. Un host che parla con 50 IP diversi è sospetto (scan o C2).</li>
   </ol>
 
   <h3>Filtri display essenziali</h3>
-  <pre>ip.addr == 10.0.0.5
+  <div class="box box-why">I filtri display non modificano il PCAP: filtrano solo la vista. Puoi applicarli e rimuoverli senza perdere dati. Sono lo strumento principale di lavoro.</div>
+  <pre><span class="comment"># Filtra per IP specifico</span>
+ip.addr == 10.0.0.5
+
+<span class="comment"># Filtra per IP sorgente E porta</span>
 ip.src == 192.168.1.10 &amp;&amp; tcp.port == 443
+
+<span class="comment"># Solo traffico HTTP (non HTTPS)</span>
 http
+
+<span class="comment"># Solo richieste POST (login, upload)</span>
 http.request.method == "POST"
+
+<span class="comment"># Solo DNS</span>
 dns
+
+<span class="comment"># Query DNS contenenti stringa sospetta</span>
 dns.qry.name contains "evil"
+
+<span class="comment"># Solo handshake TLS (ClientHello)</span>
 tls.handshake.type == 1
+
+<span class="comment"># Solo pacchetti SYN (nuove connessioni)</span>
 tcp.flags.syn == 1 &amp;&amp; tcp.flags.ack == 0
+
+<span class="comment"># Solo reset TCP (connessioni rifiutate)</span>
 tcp.flags.reset == 1
+
+<span class="comment"># Kerberos AS-REQ (richiesta TGT)</span>
 kerberos.msg_type == 10
+
+<span class="comment"># Kerberos TGS-REQ (richiesta ticket servizio)</span>
 kerberos.msg_type == 12
+
+<span class="comment"># Solo SMB2</span>
 smb2
+
+<span class="comment"># Solo autenticazione NTLM</span>
 ntlmssp</pre>
 
   <h3>HTTP - cosa cercare</h3>
+  <div class="box box-why">HTTP non cifrato è una miniera: credenziali, sessioni, file scaricati, comandi C2. Anche HTTPS ha metadata utili (SNI, certificati).</div>
   <ul>
-    <li><b>User-Agent</b> inusuale (curl, python-requests su traffico utente)</li>
-    <li><b>Authorization: Basic</b> - credenziali in Base64 decodificabili</li>
-    <li><b>POST</b> con payload binari o base64 grandi</li>
-    <li><b>Cookie</b> di sessione</li>
-    <li><b>Referer</b> per percorso navigazione</li>
+    <li><b>User-Agent</b> inusuale (curl, python-requests su traffico utente). Un browser normale ha User-Agent lungo (Mozilla/5.0...). Un malware ha User-Agent corto o assente.</li>
+    <li><b>Authorization: Basic</b> - credenziali in Base64 decodificabili. Es. <code>Authorization: Basic dXR1bnR10nBhc3N3b3Jk</code> decodifica in <code>utente:password</code>.</li>
+    <li><b>POST</b> con payload binari o base64 grandi. Login, upload, C2 beacon.</li>
+    <li><b>Cookie</b> di sessione. Se rubati, session hijacking.</li>
+    <li><b>Referer</b> per percorso navigazione. Ti dice da dove è partita la richiesta.</li>
   </ul>
-  <pre># Decodifica Basic Auth
+  <pre><span class="comment"># Decodifica Basic Auth: prendi la stringa dopo "Basic " e decodificala</span>
 echo "dXR1bnR10nBhc3N3b3Jk" | base64 -d
+<span class="comment"># Output: utente:password</span>
 
-# Export oggetti HTTP
-# Wireshark: File &gt; Export Objects &gt; HTTP</pre>
+<span class="comment"># Export oggetti HTTP: File -> Export Objects -> HTTP</span>
+<span class="comment"># Salva tutti i file trasferiti (HTML, immagini, eseguibili, PDF)</span>
+<span class="comment"># Poi analizza i file separatamente (es. exe scaricato = malware)</span></pre>
 
   <h3>DNS - la porta d'ingresso</h3>
+  <div class="box box-why">Il DNS precede quasi ogni comunicazione: prima di connettersi a un dominio, il client chiede l'IP. Quindi il DNS rivela tutto: quali domini sono stati contattati, quando, da chi.</div>
   <ul>
-    <li>Query verso domini sospetti</li>
-    <li>Volume anomalo verso singolo dominio (DNS tunneling)</li>
-    <li>Sottodomini ad alta entropia (DGA)</li>
-    <li>Query TXT verso destinazioni inusuali</li>
-    <li>NXDOMAIN massivi</li>
+    <li>Query verso domini sospetti (nomi casuali, TLD strani)</li>
+    <li>Volume anomalo verso singolo dominio (DNS tunneling: dati esfiltrati nelle query)</li>
+    <li>Sottodomini ad alta entropia (DGA: malware genera domini casuali)</li>
+    <li>Query TXT verso destinazioni inusuali (TXT può trasportare più dati dei sottodomini)</li>
+    <li>NXDOMAIN massivi (DGA che prova domini non registrati)</li>
   </ul>
-  <pre>dns.qry.name contains "malware"
+  <pre><span class="comment"># Query DNS contenenti "malware"</span>
+dns.qry.name contains "malware"
+
+<span class="comment"># Solo query TXT (record 16)</span>
 dns.qry.type == 16
+
+<span class="comment"># Solo NXDOMAIN (rcode 3 = dominio inesistente)</span>
 dns.flags.rcode == 3</pre>
 
   <h3>TLS - metadata non cifrati</h3>
+  <div class="box box-why">TLS cifra il contenuto, ma l'handshake è in chiaro. Da lì estrai il dominio (SNI), il certificato, la cipher suite. Anche senza chiavi, sai chi ha parlato con chi.</div>
   <ul>
-    <li><b>SNI</b> (Server Name Indication): dominio richiesto in chiaro</li>
-    <li><b>Certificato server</b>: CN, SAN, CA, date</li>
-    <li><b>Cipher suite</b> negoziata</li>
-    <li><b>JA3/JA4</b>: fingerprint client TLS</li>
+    <li><b>SNI</b> (Server Name Indication): dominio richiesto in chiaro. Filtro: <code>tls.handshake.extensions_server_name</code></li>
+    <li><b>Certificato server</b>: CN, SAN, CA, date. Un certificato self-signed su un sito che dovrebbe averne uno di CA è sospetto.</li>
+    <li><b>Cipher suite</b> negoziata. Suite deboli (RC4, 3DES) = configurazione vecchia.</li>
+    <li><b>JA3/JA4</b>: fingerprint client TLS. Ogni client (Firefox, Chrome, curl, malware) ha un fingerprint diverso. Utile per identificare malware noto.</li>
   </ul>
-  <pre>tls.handshake.extensions_server_name
+  <pre><span class="comment"># Filtra SNI (dominio richiesto in TLS)</span>
+tls.handshake.extensions_server_name
+
+<span class="comment"># Solo ClientHello (inizio handshake)</span>
 tls.handshake.type == 1</pre>
 
   <h3>Kerberos - attacchi rilevabili</h3>
+  <div class="box box-why">In reti Active Directory, Kerberos è il protocollo di autenticazione. Attacchi come Kerberoasting lasciano tracce visibili nel traffico.</div>
   <ul>
-    <li><b>AS-REP Roasting</b>: AS-REP con pre-auth disabilitata</li>
-    <li><b>Kerberoasting</b>: TGS-REQ per SPN, risposta RC4 (0x17)</li>
-    <li><b>Golden/Silver Ticket</b>: ticket forgiati</li>
+    <li><b>AS-REP Roasting</b>: AS-REP con pre-auth disabilitata. L'attaccante chiede un AS-REP per un utente senza pre-auth e riceve materiale cifrato con la password, crackabile offline.</li>
+    <li><b>Kerberoasting</b>: TGS-REQ per SPN, risposta cifrata con RC4 (0x17). In ambienti AES-only, RC4 è IoC quasi perfetto.</li>
+    <li><b>Golden/Silver Ticket</b>: ticket forgiati. Encryption type anomalo (RC4 in ambiente AES) è il segnale.</li>
   </ul>
-  <pre>kerberos.msg_type == 10  # AS-REQ
-kerberos.msg_type == 12  # TGS-REQ
+  <pre><span class="comment"># AS-REQ (Authentication Service Request, richiesta TGT)</span>
+kerberos.msg_type == 10
+
+<span class="comment"># TGS-REQ (Ticket Granting Service Request, richiesta ticket per servizio)</span>
+kerberos.msg_type == 12
+
+<span class="comment"># Nomi utente contenenti "admin"</span>
 kerberos.CNameString contains "admin"</pre>
 
   <h3>Pattern C2</h3>
+  <div class="box box-why">Command and Control: il malware parla con il server dell'attaccante. Il pattern è spesso regolare (beaconing) o nascosto dietro servizi legittimi (domain fronting).</div>
   <ul>
-    <li><b>Beaconing</b>: connessioni regolari a intervalli costanti</li>
-    <li><b>Domain fronting</b>: C2 dietro CDN legittimo</li>
-    <li><b>DGA</b>: domini generati algoritmicamente, molti NXDOMAIN</li>
+    <li><b>Beaconing</b>: connessioni regolari a intervalli costanti. Es. ogni 60 secondi, ogni 5 minuti. Calcola la deviazione standard degli intervalli: se è bassa, è sospetto.</li>
+    <li><b>Domain fronting</b>: C2 dietro CDN legittimo (CloudFlare, AWS). Il traffico TLS sembra verso un sito popolare, ma il vero destinatario è nell'header Host HTTP cifrato.</li>
+    <li><b>DGA</b>: domini generati algoritmicamente. Molti NXDOMAIN, sottodomini ad alta entropia, stesso TLD.</li>
   </ul>
 
   <h3>Estrazione file da PCAP</h3>
-  <pre># Wireshark
-File &gt; Export Objects &gt; HTTP
-File &gt; Export Objects &gt; SMB
+  <div class="box box-tip">Se il PCAP contiene un malware scaricato, estrailo e analizzalo separatamente con gli strumenti del Cap 3.5. In CTF spesso la flag è dentro un file trasferito via HTTP/SMB.</div>
+  <pre><span class="comment"># Wireshark - GUI</span>
+<span class="comment"># File -> Export Objects -> HTTP (o SMB, FTP, TFTP)</span>
+<span class="comment"># Seleziona i file, salvali, analizzali</span>
 
-# NetworkMiner (GUI)
-# Carica PCAP, estrae file, credenziali, host
+<span class="comment"># NetworkMiner - GUI</span>
+<span class="comment"># Carica PCAP, estrae automaticamente:</span>
+<span class="comment">#   - File (HTTP, SMB, FTP)</span>
+<span class="comment">#   - Credenziali in chiaro</span>
+<span class="comment">#   - Host osservati</span>
+<span class="comment">#   - Sessioni ricostruite</span>
 
-# Zeek (log strutturati)
+<span class="comment"># Zeek - CLI, log strutturati</span>
 zeek -r traffico.pcap
-ls *.log  # conn.log, dns.log, http.log, ssl.log, files.log, weird.log</pre>
+ls *.log  <span class="comment"># conn.log, dns.log, http.log, ssl.log, files.log, weird.log</span></pre>
 
   <h3>Zeek - dal PCAP ai log</h3>
-  <pre># Installazione
+  <div class="box box-why">Zeek trasforma un PCAP in log strutturati (TSV) interrogabili con grep/awk. Se il PCAP è grande (GB), Wireshark è lento: Zeek produce log in minuti e li navighi da shell.</div>
+  <pre><span class="comment"># Installazione (Ubuntu/Debian)</span>
 sudo apt install zeek
 
-# Analisi
+<span class="comment"># Analisi PCAP: genera log nella cartella corrente</span>
 zeek -r traffico.pcap
 
-# Log generati
-conn.log    - connessioni
-dns.log     - query DNS
-http.log    - richieste HTTP
-ssl.log     - sessioni TLS
-files.log   - file trasferiti
-weird.log   - anomalie protocollari</pre>
+<span class="comment"># Log generati:</span>
+<span class="comment"># conn.log    - connessioni (IP, porta, durata, byte)</span>
+<span class="comment"># dns.log     - query DNS</span>
+<span class="comment"># http.log    - richieste HTTP</span>
+<span class="comment"># ssl.log     - sessioni TLS</span>
+<span class="comment"># files.log   - file trasferiti</span>
+<span class="comment"># weird.log   - anomalie protocollari (spesso rivela l'incidente)</span>
+
+<span class="comment"># Leggere conn.log con zeek-cut</span>
+cat conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto duration
+
+<span class="comment"># Filtrare DNS per query più frequenti</span>
+cat dns.log | zeek-cut query | sort | uniq -c | sort -rn | head</pre>
 
   <h3>tshark - analisi CLI</h3>
-  <pre># Statistiche
+  <div class="box box-tip">tshark è la versione CLI di Wireshark. Utile per script, per PCAP grandi, per estrarre campi in CSV e passarli ad awk/grep.</div>
+  <pre><span class="comment"># Statistiche: Protocol Hierarchy</span>
 tshark -r traffic.pcap -q -z io,phs
+
+<span class="comment"># Statistiche: conversazioni TCP</span>
 tshark -r traffic.pcap -q -z conv,tcp
 
-# Filtrare e salvare
+<span class="comment"># Filtra e salva un sottoinsieme</span>
 tshark -r grande.pcap -Y 'http.request.method == "POST"' -w post_only.pcap
 
-# Estrarre campi in CSV
+<span class="comment"># Estrai campi in CSV (per pipeline awk/grep)</span>
 tshark -r traffic.pcap -Y "http.request" -T fields -e ip.src -e http.host -e http.request.uri -E separator=,
 
-# Decodificare porta non standard
+<span class="comment"># Decodifica porta non standard come HTTP</span>
 tshark -r traffic.pcap -d tcp.port==8080,http -Y "http"</pre>
 
   <h3>tcpdump - cattura</h3>
-  <pre># Cattura su interfaccia
+  <div class="box box-tip">tcpdump è il tool di cattura su qualsiasi sistema Linux/macOS. Semplice, affidabile, presente di default. Utile per catturare traffico live in lab.</div>
+  <pre><span class="comment"># Cattura su interfaccia eth0 e salva</span>
 sudo tcpdump -i eth0 -w cattura.pcap
 
-# Leggi file
+<span class="comment"># Leggi un file già catturato</span>
 tcpdump -r cattura.pcap
 
-# Filtri BPF
+<span class="comment"># Filtro BPF: solo porta 443, max 100 pacchetti</span>
 tcpdump -r cattura.pcap -c 100 'tcp port 443'
+
+<span class="comment"># Output ASCII: mostra il payload in chiaro</span>
 tcpdump -r cattura.pcap -A 'host 10.0.0.5 and port 80'</pre>
 
   <h3>Checklist Network Forensics</h3>
+  <div class="box box-tip">Segui questa checklist in ordine. Non saltare passaggi: ogni step restringe il campo per il successivo.</div>
   <ol>
     <li>Overview: Protocol Hierarchy, Conversations, Endpoints</li>
-    <li>Identifica host sospetti (volumi anomali)</li>
-    <li>Analizza DNS: query sospette, DGA, tunneling</li>
-    <li>Analizza HTTP: User-Agent, POST, download</li>
-    <li>Analizza TLS: SNI, certificati</li>
+    <li>Identifica host sospetti (volumi anomali, connessioni a IP strani)</li>
+    <li>Analizza DNS: query sospette, DGA, tunneling, NXDOMAIN</li>
+    <li>Analizza HTTP: User-Agent, POST, download, Basic Auth</li>
+    <li>Analizza TLS: SNI, certificati, cipher suite</li>
     <li>Estrai file con Export Objects / NetworkMiner</li>
-    <li>Genera log Zeek per analisi strutturata</li>
-    <li>Correla con timeline</li>
+    <li>Genera log Zeek per analisi strutturata su PCAP grandi</li>
+    <li>Correla con timeline (quando è successo cosa)</li>
   </ol>
   <a class="back-top" href="#">Torna all'indice</a>
 </section>
@@ -430,59 +527,68 @@ tcpdump -r cattura.pcap -A 'host 10.0.0.5 and port 80'</pre>
 <!-- LOG -->
 <section id="log">
   <h2>3.2 Log Analysis &amp; Incident Response</h2>
-  <div class="box box-info">I log dicono cosa è accaduto dentro la macchina. Complementari al PCAP.</div>
+  <div class="box box-info">I log dicono cosa è accaduto dentro la macchina. Complementari al PCAP: uno dice cosa è transitato in rete, l'altro cosa è successo dentro l'host.</div>
+
+  <div class="box box-why">In CTF, i log sono spesso la fonte primaria (più facili da leggere del PCAP). Un .evtx di Windows contiene centinaia di eventi: sapere quali Event ID cercare è la differenza tra 5 minuti e 2 ore.</div>
 
   <h3>Windows Event Log - Canali</h3>
+  <div class="box box-why">Windows organizza i log in "canali". Ogni canale ha uno scopo. Sapere dove guardare è il primo passo.</div>
   <ul>
-    <li><b>Security</b>: autenticazioni, accessi, permessi</li>
-    <li><b>System</b>: avvii, servizi, driver</li>
-    <li><b>Application</b>: applicazioni</li>
-    <li><b>Microsoft-Windows-Sysmon/Operational</b>: se Sysmon installato</li>
-    <li><b>Microsoft-Windows-PowerShell/Operational</b>: esecuzione PowerShell</li>
-    <li><b>Microsoft-Windows-TaskScheduler/Operational</b>: scheduled tasks</li>
+    <li><b>Security</b>: autenticazioni, accessi, permessi. Il canale più importante per la sicurezza.</li>
+    <li><b>System</b>: avvii, servizi, driver. Utile per persistence (servizi installati).</li>
+    <li><b>Application</b>: applicazioni. Raramente utile in CTF.</li>
+    <li><b>Microsoft-Windows-Sysmon/Operational</b>: se Sysmon installato. Il canale più ricco per detection.</li>
+    <li><b>Microsoft-Windows-PowerShell/Operational</b>: esecuzione PowerShell. Fondamentale per PowerShell offuscato.</li>
+    <li><b>Microsoft-Windows-TaskScheduler/Operational</b>: scheduled tasks. Persistence classica.</li>
   </ul>
-  <p>File in <code>C:\Windows\System32\winevt\Logs\</code> con estensione <code>.evtx</code></p>
+  <p>File in <code>C:\Windows\System32\winevt\Logs\</code> con estensione <code>.evtx</code>. Sono binari, non testuali: servono tool dedicati (EvtxECmd, Event Viewer, Chainsaw).</p>
 
   <h3>Event ID critici</h3>
+  <div class="box box-tip">Impara a memoria questi Event ID. Sono il 90% di ciò che cerchi in CTF. Ogni ID ha un significato preciso: 4624 = login OK, 4625 = login fallito, 4688 = processo creato.</div>
+
   <h4>Autenticazione</h4>
   <table>
-    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th></tr>
-    <tr><td>4624</td><td>Logon successful</td><td>Autenticazione riuscita</td></tr>
-    <tr><td>4625</td><td>Logon failed</td><td>Autenticazione fallita</td></tr>
-    <tr><td>4634</td><td>Logoff</td><td>Fine sessione</td></tr>
-    <tr><td>4648</td><td>Logon with explicit credentials</td><td>runas, autenticazione esplicita</td></tr>
-    <tr><td>4672</td><td>Special privileges assigned</td><td>Logon con privilegi admin</td></tr>
-    <tr><td>4768</td><td>Kerberos TGT requested</td><td>Richiesta ticket iniziale</td></tr>
-    <tr><td>4769</td><td>Kerberos Service Ticket requested</td><td>Kerberoasting</td></tr>
-    <tr><td>4776</td><td>NTLM credential validation</td><td>Validazione NTLM</td></tr>
-    <tr><td>4720</td><td>User account created</td><td>Nuovo account</td></tr>
-    <tr><td>4724</td><td>Password reset</td><td>Reset password</td></tr>
-    <tr><td>4738</td><td>User account changed</td><td>Modifica account</td></tr>
+    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th><th>Quando è sospetto</th></tr>
+    <tr><td>4624</td><td>Logon successful</td><td>Autenticazione riuscita</td><td>Fuori orario, da IP strano, Logon Type 10 (RDP)</td></tr>
+    <tr><td>4625</td><td>Logon failed</td><td>Autenticazione fallita</td><td>Molti 4625 = brute force / password spraying</td></tr>
+    <tr><td>4634</td><td>Logoff</td><td>Fine sessione</td><td>Utile per correlare sessioni</td></tr>
+    <tr><td>4648</td><td>Logon with explicit credentials</td><td>runas, autenticazione esplicita</td><td>Lateral movement (runas, PsExec)</td></tr>
+    <tr><td>4672</td><td>Special privileges assigned</td><td>Logon con privilegi admin</td><td>Utente non admin che riceve privilegi = sospetto</td></tr>
+    <tr><td>4768</td><td>Kerberos TGT requested</td><td>Richiesta ticket iniziale</td><td>AS-REP roasting (pre-auth disabilitata)</td></tr>
+    <tr><td>4769</td><td>Kerberos Service Ticket requested</td><td>Richiesta ticket servizio</td><td>Kerberoasting (RC4 = 0x17)</td></tr>
+    <tr><td>4776</td><td>NTLM credential validation</td><td>Validazione NTLM</td><td>NTLM in ambiente Kerberos-only</td></tr>
+    <tr><td>4720</td><td>User account created</td><td>Nuovo account</td><td>Account creato fuori procedura</td></tr>
+    <tr><td>4724</td><td>Password reset</td><td>Reset password</td><td>Reset non richiesto dall'utente</td></tr>
+    <tr><td>4738</td><td>User account changed</td><td>Modifica account</td><td>Modifica privilegi non autorizzata</td></tr>
   </table>
 
   <h4>Esecuzione</h4>
   <table>
-    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th></tr>
-    <tr><td>4688</td><td>Process creation</td><td>Creazione processo (con Command Line se abilitato)</td></tr>
-    <tr><td>4689</td><td>Process termination</td><td>Terminazione processo</td></tr>
-    <tr><td>4697</td><td>Service installed</td><td>Installazione servizio</td></tr>
+    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th><th>Quando è sospetto</th></tr>
+    <tr><td>4688</td><td>Process creation</td><td>Creazione processo</td><td>Processi strani (powershell da word, cmd da servizio web)</td></tr>
+    <tr><td>4689</td><td>Process termination</td><td>Terminazione processo</td><td>Utile per durata processo</td></tr>
+    <tr><td>4697</td><td>Service installed</td><td>Installazione servizio</td><td>Servizio nuovo = persistence</td></tr>
   </table>
+  <div class="box box-tip">Il 4688 è cieco senza "Command Line" abilitata. Se vedi solo il nome del processo (es. powershell.exe) senza argomenti, non sai cosa ha eseguito. Verifica l'Audit Policy.</div>
 
   <h4>Persistence</h4>
   <table>
-    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th></tr>
-    <tr><td>7045</td><td>Service installed (System)</td><td>PsExec/CobaltStrike</td></tr>
-    <tr><td>1102</td><td>Audit log cleared</td><td>Log cancellato - allarme critico</td></tr>
+    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th><th>Quando è sospetto</th></tr>
+    <tr><td>7045</td><td>Service installed (System)</td><td>Installazione servizio</td><td>PsExec/CobaltStrike (ServiceName casuale 8 char)</td></tr>
+    <tr><td>1102</td><td>Audit log cleared</td><td>Log cancellato</td><td>Sempre sospetto: attaccante che copre le tracce</td></tr>
   </table>
+  <div class="box box-warn">L'evento 1102 è un allarme critico: chi cancella il log di sicurezza lascia come unica traccia proprio l'evento 1102. Se lo vedi, sei sicuramente davanti a un attacco.</div>
 
   <h4>File e condivisioni</h4>
   <table>
-    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th></tr>
-    <tr><td>5140</td><td>Network share accessed</td><td>Accesso share SMB</td></tr>
-    <tr><td>5145</td><td>Detailed file share access</td><td>File specifico su share</td></tr>
+    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th><th>Quando è sospetto</th></tr>
+    <tr><td>5140</td><td>Network share accessed</td><td>Accesso share SMB</td><td>Accesso a share sensibili da utente insolito</td></tr>
+    <tr><td>5145</td><td>Detailed file share access</td><td>File specifico su share</td><td>Lettura di file sensibili = esfiltrazione</td></tr>
   </table>
+  <div class="box box-tip">Il 5145 è oro per il lateral movement via SMB: mostra letteralmente quali file un utente remoto ha letto o scritto. È verboso ma in un'indagine è decisivo.</div>
 
   <h3>Logon Type - dettaglio critico</h3>
+  <div class="box box-why">L'evento 4624 include un campo "Logon Type" che dice COME è avvenuto il login. Type 2 = console, Type 3 = rete, Type 10 = RDP. Un account che normalmente fa Type 2 e improvvisamente fa Type 10 da IP esterno è compromesso.</div>
   <table>
     <tr><th>Type</th><th>Significato</th><th>Contesto</th></tr>
     <tr><td>2</td><td>Interactive</td><td>Logon fisico/console</td></tr>
@@ -497,52 +603,61 @@ tcpdump -r cattura.pcap -A 'host 10.0.0.5 and port 80'</pre>
   </table>
 
   <h3>Sysmon - Event ID principali</h3>
+  <div class="box box-why">Sysmon è un driver Microsoft che logga eventi a basso livello: creazione processi, connessioni rete, caricamento DLL, modifiche registro. Con una config ben curata, è la telemetria endpoint più ricca su Windows. Se in CTF hai un .evtx di Sysmon, è oro.</div>
   <table>
-    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th></tr>
-    <tr><td>1</td><td>ProcessCreate</td><td>Creazione processo dettagliata</td></tr>
-    <tr><td>2</td><td>FileCreateTime</td><td>Modifica timestamp file</td></tr>
-    <tr><td>3</td><td>NetworkConnect</td><td>Connessione di rete</td></tr>
-    <tr><td>5</td><td>ProcessTerminate</td><td>Terminazione processo</td></tr>
-    <tr><td>6</td><td>DriverLoad</td><td>Caricamento driver kernel</td></tr>
-    <tr><td>7</td><td>ImageLoad</td><td>Caricamento DLL</td></tr>
-    <tr><td>8</td><td>CreateRemoteThread</td><td>Injection in altro processo</td></tr>
-    <tr><td>10</td><td>ProcessAccess</td><td>Accesso a memoria altro processo (Mimikatz)</td></tr>
-    <tr><td>11</td><td>FileCreate</td><td>Creazione file</td></tr>
-    <tr><td>12/13/14</td><td>RegistryEvent</td><td>Modifiche registro</td></tr>
-    <tr><td>22</td><td>DnsQuery</td><td>Query DNS da processo</td></tr>
-    <tr><td>23</td><td>FileDelete</td><td>Cancellazione file</td></tr>
+    <tr><th>ID</th><th>Nome</th><th>Cosa indica</th><th>Uso in CTF</th></tr>
+    <tr><td>1</td><td>ProcessCreate</td><td>Creazione processo dettagliata</td><td>Vedi command line completa, parent process, hash</td></tr>
+    <tr><td>2</td><td>FileCreateTime</td><td>Modifica timestamp file</td><td>Timestomping detection</td></tr>
+    <tr><td>3</td><td>NetworkConnect</td><td>Connessione di rete</td><td>Quale processo ha parlato con quale IP</td></tr>
+    <tr><td>5</td><td>ProcessTerminate</td><td>Terminazione processo</td><td>Durata processo</td></tr>
+    <tr><td>6</td><td>DriverLoad</td><td>Caricamento driver kernel</td><td>Driver sospetti = rootkit</td></tr>
+    <tr><td>7</td><td>ImageLoad</td><td>Caricamento DLL</td><td>DLL iniettate, moduli sospetti</td></tr>
+    <tr><td>8</td><td>CreateRemoteThread</td><td>Injection in altro processo</td><td>Code injection detection</td></tr>
+    <tr><td>10</td><td>ProcessAccess</td><td>Accesso a memoria altro processo</td><td>Mimikatz su LSASS (GrantedAccess 0x1010)</td></tr>
+    <tr><td>11</td><td>FileCreate</td><td>Creazione file</td><td>File droppati da malware</td></tr>
+    <tr><td>12/13/14</td><td>RegistryEvent</td><td>Modifiche registro</td><td>Persistence via Run key</td></tr>
+    <tr><td>22</td><td>DnsQuery</td><td>Query DNS da processo</td><td>Quale processo ha risolto quale dominio</td></tr>
+    <tr><td>23</td><td>FileDelete</td><td>Cancellazione file</td><td>Attaccante che pulisce tracce</td></tr>
   </table>
+  <div class="box box-tip">L'evento Sysmon 10 (ProcessAccess) è il pattern esatto di Mimikatz su LSASS: <code>SourceImage: mimikatz.exe</code>, <code>TargetImage: lsass.exe</code>, <code>GrantedAccess: 0x1010</code>. Se lo vedi, hai trovato credential dumping.</div>
 
   <h3>Eric Zimmerman Tools</h3>
+  <div class="box box-why">Eric Zimmerman è un consulente DFIR senior che ha rilasciato gratuitamente una suite di tool per l'analisi forense Windows. Sono lo standard di fatto per parsare artefatti. Tutti scaricabili da ericzimmerman.github.io.</div>
   <ul>
-    <li><b>EvtxECmd</b>: parser .evtx, export CSV/JSON, applica maps</li>
-    <li><b>Timeline Explorer</b>: GUI per navigare CSV prodotti</li>
+    <li><b>EvtxECmd</b>: parser .evtx, export CSV/JSON, applica maps per tradurre Event ID in nomi leggibili</li>
+    <li><b>Timeline Explorer</b>: GUI per navigare CSV prodotti (filtri, ricerche su milioni di righe)</li>
     <li><b>MFTECmd</b>: parser $MFT, $LogFile, $UsnJrnl</li>
-    <li><b>RECmd</b>: parser registry hive</li>
-    <li><b>PECmd</b>: parser Prefetch</li>
-    <li><b>AmcacheParser</b>: parser Amcache.hve</li>
+    <li><b>RECmd</b>: parser registry hive con batch file pre-confezionati</li>
+    <li><b>PECmd</b>: parser Prefetch (.pf)</li>
+    <li><b>AmcacheParser</b>: parser Amcache.hve (hash SHA-1 dei binari eseguiti)</li>
     <li><b>AppCompatCacheParser</b>: parser ShimCache</li>
-    <li><b>LECmd</b>: parser LNK</li>
+    <li><b>LECmd</b>: parser LNK (shortcut)</li>
     <li><b>JLECmd</b>: parser JumpList</li>
-    <li><b>SBECmd</b>: parser ShellBags</li>
+    <li><b>SBECmd</b>: parser ShellBags (cartelle visitate)</li>
     <li><b>RBCmd</b>: parser Recycle Bin</li>
-    <li><b>SrumECmd</b>: parser SRUM</li>
+    <li><b>SrumECmd</b>: parser SRUM (uso risorse per applicazione)</li>
     <li><b>WxTCmd</b>: parser Windows Timeline</li>
-    <li><b>KAPE</b>: triage + parsing automatico</li>
+    <li><b>KAPE</b>: triage + parsing automatico di tutti gli artefatti</li>
   </ul>
 
   <h3>Chainsaw / Hayabusa / DeepBlueCLI</h3>
-  <pre># Chainsaw - hunting su .evtx con regole Sigma
+  <div class="box box-why">Parsare i log è solo il primo passo. Il passo successivo è cercare pattern sospetti automaticamente con regole Sigma. Questi tre tool applicano regole Sigma a file .evtx offline.</div>
+  <pre><span class="comment"># Chainsaw - hunting su .evtx con regole Sigma</span>
+<span class="comment"># --sigma: cartella con regole</span>
+<span class="comment"># --mapping: mapping event logs Sigma</span>
+<span class="comment"># --output: file risultati</span>
 chainsaw hunt /path/to/evtx/ --sigma /path/to/sigma/rules/ --mapping /path/to/mappings/sigma-event-logs-all.yml --output results.csv --csv
 
-# Hayabusa - scan completo
+<span class="comment"># Hayabusa - scan completo con timeline</span>
 hayabusa.exe csv-timeline -d /path/to/evtx/ -o timeline.csv
 
-# DeepBlueCLI - PowerShell
+<span class="comment"># DeepBlueCLI - PowerShell, script leggibile</span>
 .\DeepBlue.ps1 -log .\Security.evtx</pre>
 
   <h3>Sigma rules</h3>
-  <pre>title: Mimikatz DC Sync
+  <div class="box box-why">Sigma è un formato standard per scrivere regole di detection indipendenti dal SIEM. Una regola Sigma è un file YAML che descrive cosa cercare. Strumenti come Chainsaw la traducono in query native.</div>
+  <pre><span class="comment"># Esempio: regola per Mimikatz DCSync</span>
+title: Mimikatz DC Sync
 id: 2030ad8f-0b7d-4e3c-bc40-2b3a45f43e1d
 status: stable
 logsource:
@@ -562,45 +677,54 @@ tags:
   - attack.t1003.006</pre>
 
   <h3>Linux logging</h3>
-  <pre># syslog
-/var/log/auth.log      # Debian/Ubuntu
-/var/log/secure        # RHEL/CentOS
-/var/log/syslog
-/var/log/kern.log
-/var/log/apache2/
-/var/log/audit/audit.log
+  <div class="box box-why">Su Linux i log sono file di testo in /var/log. Più semplici da leggere di .evtx (nessun tool dedicato), ma serve sapere dove guardare.</div>
+  <pre><span class="comment"># File di log principali</span>
+/var/log/auth.log      <span class="comment"># Debian/Ubuntu: autenticazioni, sudo, SSH</span>
+/var/log/secure        <span class="comment"># RHEL/CentOS: equivalente</span>
+/var/log/syslog        <span class="comment"># Log generici di sistema</span>
+/var/log/kern.log      <span class="comment"># Kernel</span>
+/var/log/apache2/      <span class="comment"># Web server</span>
+/var/log/audit/audit.log <span class="comment"># Auditd (se installato)</span>
 
-# Cercare login falliti
+<span class="comment"># Cercare login falliti per IP</span>
 grep "Failed password" /var/log/auth.log | awk '{print $11}' | sort | uniq -c | sort -rn | head
 
-# journalctl
-journalctl -b
-journalctl -p err
-journalctl -u nginx
-journalctl --since "2026-04-15 09:00" --until "2026-04-15 17:00"
-journalctl -o json -u sshd
+<span class="comment"># Cercare comandi sudo</span>
+grep "sudo:" /var/log/auth.log | tail -50
 
-# auditd
-ausearch -k user_modify
-ausearch --start today -m USER_LOGIN
-aureport --summary</pre>
+<span class="comment"># journalctl (systemd)</span>
+journalctl -b                                          <span class="comment"># boot corrente</span>
+journalctl -p err                                      <span class="comment"># solo errori</span>
+journalctl -u nginx                                    <span class="comment"># solo unit nginx</span>
+journalctl --since "2026-04-15 09:00" --until "2026-04-15 17:00"  <span class="comment"># range temporale</span>
+journalctl -o json -u sshd                             <span class="comment"># output JSON</span>
+
+<span class="comment"># auditd - audit di sicurezza dettagliato</span>
+ausearch -k user_modify                                <span class="comment"># eventi con chiave user_modify</span>
+ausearch --start today -m USER_LOGIN                   <span class="comment"># login di oggi</span>
+aureport --summary                                     <span class="comment"># riepilogo</span></pre>
 
   <h3>Detection di tecniche comuni</h3>
+  <div class="box box-tip">Queste sono le tecniche che in CTF trovi più spesso. Impara a riconoscerle a colpo d'occhio.</div>
+
   <h4>Password spraying (T1110.003)</h4>
+  <div class="box box-why">L'attaccante prova UNA password comune (es. "Primavera2026!") contro MOLTI utenti. Evita il lockout perché ogni utente ha pochi tentativi falliti.</div>
   <ul>
     <li>Cluster di eventi 4625 con TargetUserName diversi</li>
-    <li>Status/SubStatus consistenti</li>
+    <li>Status/SubStatus consistenti (es. 0xC000006A = password errata)</li>
     <li>Stesso IpAddress o pattern temporale stretto</li>
   </ul>
 
   <h4>Kerberoasting (T1558.003)</h4>
+  <div class="box box-why">L'attaccante richiede ticket di servizio (TGS) per account con SPN. Il TGS è cifrato con la password dell'account di servizio, crackabile offline. Non serve essere admin: qualsiasi utente di dominio può farlo.</div>
   <ul>
     <li>Eventi 4769 con TicketEncryptionType = 0x17 (RC4)</li>
     <li>In ambienti AES-only, RC4 è IoC quasi perfetto</li>
-    <li>Query: <code>index=windows EventCode=4769 TicketEncryptionType=0x17 | stats count by TargetUserName, ServiceName, src_ip</code></li>
+    <li>Query Splunk: <code>index=windows EventCode=4769 TicketEncryptionType=0x17 | stats count by TargetUserName, ServiceName, src_ip</code></li>
   </ul>
 
   <h4>Pass-the-Hash / Pass-the-Ticket (T1550)</h4>
+  <div class="box box-why">L'attaccante usa hash NTLM o ticket Kerberos rubati per autenticarsi come un altro utente senza conoscere la password in chiaro.</div>
   <ul>
     <li>Eventi 4624 con Logon Type 3 da host insoliti</li>
     <li>AuthenticationPackageName NTLM in ambienti Kerberos-only</li>
@@ -608,44 +732,53 @@ aureport --summary</pre>
   </ul>
 
   <h4>Lateral movement via PsExec/SMB (T1021.002)</h4>
+  <div class="box box-why">L'attaccante esegue comandi remoti su un altro host via PsExec o tool equivalenti. Lascia una firma riconoscibile: servizio temporaneo con nome casuale.</div>
   <ul>
     <li>Host sorgente: 4648 (logon explicit credentials)</li>
-    <li>Host destinazione: 7045 (service installed) con ServiceName casuale</li>
+    <li>Host destinazione: 7045 (service installed) con ServiceName casuale (spesso 8 caratteri alfanumerici)</li>
     <li>Host destinazione: 4624 Logon Type 3 dal sorgente</li>
+    <li>ImagePath temporaneo: C:\Windows\PSEXESVC.exe o simile</li>
   </ul>
 
   <h4>PowerShell offuscato (T1059.001)</h4>
+  <div class="box box-why">L'attaccante esegue PowerShell con argomenti in Base64 per oscurare il comportamento. Sembra rumore, in realtà è codice.</div>
   <ul>
-    <li>Eventi 4104 con contenuto che include <code>-enc</code>, <code>-encodedCommand</code></li>
+    <li>Eventi 4104 (Script Block Logging) con contenuto che include <code>-enc</code>, <code>-encodedCommand</code></li>
     <li>Blob Base64 lunghi nel command line</li>
     <li>Sysmon event 1 con CommandLine sospetto</li>
   </ul>
 
   <h4>Log clearing (T1070.001)</h4>
+  <div class="box box-why">L'attaccante cancella il Security log per coprire le tracce. Ma il log successivo registra che è stato cancellato.</div>
   <ul>
     <li>Evento 1102 nel canale Security</li>
     <li>Allarme critico se non autorizzato</li>
   </ul>
 
   <h3>Timeline analysis</h3>
-  <pre># Plaso / log2timeline
+  <div class="box box-why">Un incidente ricostruito senza timeline è un elenco di fatti senza significato. La timeline allinea cronologicamente TUTTI gli eventi da fonti diverse: log Windows, log Linux, traffico rete, metadati file system.</div>
+  <pre><span class="comment"># Plaso / log2timeline: aggrega artefatti in una supertimeline</span>
 log2timeline.py --storage-file timeline.plaso /path/to/evidence/
+
+<span class="comment"># Esporta in CSV navigabile</span>
 psort.py -o l2tcsv -w timeline.csv timeline.plaso
 
-# Navigazione con Timeline Explorer
-# Filtri per finestra temporale, tipo artefatto, keyword
+<span class="comment"># Filtra per data (utile per isolare una finestra temporale)</span>
+psort.py -o l2tcsv -w timeline.csv timeline.plaso "date &gt; '2026-04-15 09:00:00'"
 
-# Pivoting temporale
-# Identificato evento sospetto, espandi +/-15 minuti</pre>
+<span class="comment"># Navigazione: Timeline Explorer (GUI) o Timesketch (web collaborativo)</span>
+<span class="comment"># Pivoting temporale: identificato evento sospetto, espandi +/-15 minuti</span>
+<span class="comment"># Spesso eventi adiacenti rivelano il contesto</span></pre>
 
   <h3>Ciclo IR in pratica</h3>
+  <div class="box box-why">Il NIST SP 800-61 definisce 4 fasi del ciclo IR. In CTF usi solo la fase 2 (Detection &amp; Analysis), ma conoscerle tutte ti serve per capire il contesto.</div>
   <ol>
-    <li><b>Preparation</b>: playbook, tool, baseline, esercitazioni</li>
-    <li><b>Detection &amp; Analysis</b>: validare, classificare, correlare, identificare perimetro</li>
-    <li><b>Containment</b>: isolare host, bloccare account, rotare credenziali, bloccare IP C2</li>
-    <li><b>Eradication</b>: reimaging, rimuovere persistenza, patchare vulnerabilità</li>
-    <li><b>Recovery</b>: riportare in produzione, monitoraggio rafforzato</li>
-    <li><b>Post-Incident</b>: lessons learned, aggiornare playbook, detection engineering, IoC sharing</li>
+    <li><b>Preparation</b>: playbook, tool, baseline, esercitazioni. Si fa PRIMA dell'incidente.</li>
+    <li><b>Detection &amp; Analysis</b>: validare, classificare, correlare, identificare perimetro. In CTF è tutto qui.</li>
+    <li><b>Containment</b>: isolare host, bloccare account, rotare credenziali, bloccare IP C2. In CTF non si fa (non c'è un host reale).</li>
+    <li><b>Eradication</b>: reimaging, rimuovere persistenza, patchare vulnerabilità. In CTF non si fa.</li>
+    <li><b>Recovery</b>: riportare in produzione, monitoraggio rafforzato. In CTF non si fa.</li>
+    <li><b>Post-Incident</b>: lessons learned, aggiornare playbook, detection engineering, IoC sharing. In CTF il writeup è la versione ridotta di questa fase.</li>
   </ol>
   <a class="back-top" href="#">Torna all'indice</a>
 </section>
@@ -655,126 +788,156 @@ psort.py -o l2tcsv -w timeline.csv timeline.plaso
   <h2>3.3 Memory Forensics</h2>
   <div class="box box-info">La RAM contiene ciò che il disco non vede: processi, connessioni, credenziali, codice iniettato. Si perde al riavvio.</div>
 
+  <div class="box box-why">Perché la RAM è importante: un malware "fileless" che gira solo in memoria è invisibile all'antivirus classico e alla forensics di disco. In memoria è perfettamente analizzabile. Inoltre, la RAM contiene credenziali in chiaro o in forma facilmente reversibile.</div>
+
+  <div class="box box-tip">In CTF, se hai un dump di memoria, inizia da <code>windows.info</code> per capire cosa stai analizzando, poi vai su processi e rete. Il 70% delle flag in memory forensics sta in processi, connessioni o credenziali.</div>
+
   <h3>Acquisizione</h3>
+  <div class="box box-why">Prima di analizzare, serve catturare. L'acquisizione produce un file dump che contiene una copia byte per byte di tutta la memoria fisica. La dimensione corrisponde alla RAM installata (16 GB di RAM = dump da 16 GB).</div>
   <h4>Windows</h4>
-  <pre># WinPmem
+  <pre><span class="comment"># WinPmem - tool open source, output raw</span>
 winpmem.exe -o memory.raw
 
-# DumpIt
+<span class="comment"># DumpIt - single-exe, zero configurazione</span>
 DumpIt.exe /O C:\memory.dmp
 
-# Magnet RAM Capture (GUI)
-# FTK Imager</pre>
+<span class="comment"># Magnet RAM Capture (GUI) - freeware con registrazione</span>
+<span class="comment"># FTK Imager - supporta anche disk imaging</span></pre>
 
   <h4>Linux</h4>
-  <pre># LiME (kernel module)
+  <pre><span class="comment"># LiME - kernel module, richiede compilazione</span>
 sudo insmod lime-*.ko "path=/mnt/ext/memory.lime format=lime"
 
-# AVML (userspace)
+<span class="comment"># AVML - userspace, richiede meno privilegi</span>
 sudo ./avml output.lime</pre>
 
   <h4>VM</h4>
-  <pre># VirtualBox
+  <pre><span class="comment"># VirtualBox: core dump navigabile</span>
 VBoxManage debugvm &lt;nome_vm&gt; dumpvmcore --filename=dump.core
 
-# VMware
-# Snapshot con "Include memory in snapshot" produce .vmem
+<span class="comment"># VMware: snapshot con "Include memory in snapshot" produce .vmem</span>
 
-# QEMU/KVM
+<span class="comment"># QEMU/KVM: dump live</span>
 virsh dump &lt;domain&gt; --live dump.file</pre>
 
   <h3>Volatility 3 - Sintassi base</h3>
-  <pre>vol -f &lt;memory_dump&gt; &lt;platform&gt;.&lt;plugin&gt; [opzioni]
+  <div class="box box-why">Volatility è il framework di riferimento per memory forensics. Volatility 3 (Python 3) è la versione moderna. Sintassi: <code>vol -f &lt;dump&gt; &lt;platform&gt;.&lt;plugin&gt;</code>. Rileva automaticamente il profilo dal dump.</div>
+  <pre><span class="comment"># Sintassi generale</span>
+vol -f &lt;memory_dump&gt; &lt;platform&gt;.&lt;plugin&gt; [opzioni]
 
-# Info base
+<span class="comment"># Info base: versione Windows, build, architettura</span>
 vol -f memory.raw windows.info
 
-# Linux
+<span class="comment"># Linux</span>
 vol -f memory.raw linux.info</pre>
 
   <h3>Plugin processi</h3>
-  <pre># Lista processi (kernel linked list)
+  <div class="box box-why">I processi sono il primo oggetto di analisi. Volatility offre plugin diversi che li esaminano da angolazioni diverse: pslist (lista canonica), psscan (pool scan, trova nascosti), pstree (albero), cmdline (argomenti).</div>
+  <pre><span class="comment"># Lista processi (kernel linked list) - il più veloce</span>
 vol -f memory.raw windows.pslist
 
-# Pool scan (trova processi nascosti)
+<span class="comment"># Pool scan: cerca strutture EPROCESS per tag</span>
+<span class="comment"># Trova processi nascosti da rootkit o già terminati</span>
 vol -f memory.raw windows.psscan
 
-# Albero processi
+<span class="comment"># Albero processi: relazioni parent/child</span>
+<span class="comment"># Utile per vedere powershell.exe figlio di winword.exe (macro Office)</span>
 vol -f memory.raw windows.pstree
 
-# Command line di ogni processo
+<span class="comment"># Command line di ogni processo</span>
+<span class="comment"># Rivela argomenti offuscati (es. powershell -enc base64)</span>
 vol -f memory.raw windows.cmdline
 
-# DLL caricate
+<span class="comment"># DLL caricate in un processo specifico</span>
+<span class="comment"># Utile per verificare DLL iniettate</span>
 vol -f memory.raw windows.dlllist --pid &lt;PID&gt;</pre>
 
+  <div class="box box-tip">Incrocia pslist + psscan: se un processo compare in psscan ma NON in pslist, è quasi sempre segno di manipolazione della kernel linked list (rootkit).</div>
+
   <h3>Plugin rete</h3>
-  <pre># Connessioni e socket
+  <div class="box box-why">Estrae connessioni e socket in ascolto dalla memoria. Un processo "pulito" come PowerShell con una connessione TCP attiva verso un IP esterno è il pattern di un beacon C2.</div>
+  <pre><span class="comment"># Connessioni e socket</span>
 vol -f memory.raw windows.netscan
 
-# Output: Offset, Proto, LocalAddr:Port, ForeignAddr:Port, State, PID, Owner</pre>
+<span class="comment"># Output: Offset, Proto, LocalAddr:Port, ForeignAddr:Port, State, PID, Owner</span>
+<span class="comment"># Cerca: processi non-network (powershell, cmd, rundll32) con connessioni attive</span></pre>
 
   <h3>Code injection</h3>
-  <pre># Ricerca pagine RWX con MZ header
+  <div class="box box-why">Il code injection è la tecnica con cui un attaccante fa girare il proprio codice dentro un processo legittimo. malfind cerca pagine di memoria RWX (Read+Write+eXecute) con MZ header, tipiche di shellcode iniettato.</div>
+  <pre><span class="comment"># Ricerca pagine RWX con MZ header (PE iniettato)</span>
 vol -f memory.raw windows.malfind
 
-# Output: Process, Address, Protection, Hex dump</pre>
+<span class="comment"># Output: Process, Address, Protection, Hex dump</span>
+<span class="comment"># Se vedi MZ (4D 5A) in una pagina RWX di explorer.exe, è injection</span>
+
+<span class="comment"># Per analisi approfondita di singole regioni di memoria</span>
+vol -f memory.raw windows.vadinfo --pid &lt;PID&gt;</pre>
 
   <h3>Credenziali</h3>
-  <pre># Hash NTLM locali
+  <div class="box box-why">Windows tiene le credenziali in memoria (LSASS) per Single Sign-On, share, VPN. Sono in chiaro o in forma facilmente reversibile. Volatility le estrae.</div>
+  <pre><span class="comment"># Hash NTLM locali (da LSASS)</span>
 vol -f memory.raw windows.hashdump
 
-# Segreti LSA
+<span class="comment"># Output: utente:RID:LM:NTLM (formato pwdump)</span>
+<span class="comment"># L'hash NTLM è direttamente sfruttabile in Pass-the-Hash</span>
+
+<span class="comment"># Segreti LSA (credenziali cached, chiavi servizi)</span>
 vol -f memory.raw windows.lsadump
 
-# Credenziali cached (MSCACHE)
+<span class="comment"># Credenziali cached (MSCACHE_V2, crackabili offline)</span>
 vol -f memory.raw windows.cachedump</pre>
 
+  <div class="box box-tip">Il motivo per cui le credenziali sono estraibili: Windows le tiene in chiaro in LSASS per SSO. Microsoft ha aggiunto Credential Guard (Windows 10+), ma in molti ambienti reali non è abilitato.</div>
+
   <h3>Registry in memoria</h3>
-  <pre># Lista hive
+  <div class="box box-why">Il registro di Windows è caricato in memoria dal kernel. Volatility permette di ispezionare le hive dal dump senza accedere al disco.</div>
+  <pre><span class="comment"># Elenca hive caricate</span>
 vol -f memory.raw windows.registry.hivelist
 
-# Print chiave specifica
+<span class="comment"># Print chiave specifica (es. Run keys per persistence)</span>
 vol -f memory.raw windows.registry.printkey --key "Software\Microsoft\Windows\CurrentVersion\Run"
 
-# UserAssist (programmi lanciati)
+<span class="comment"># UserAssist: quali programmi sono stati lanciati dall'interfaccia grafica</span>
 vol -f memory.raw windows.registry.userassist</pre>
 
   <h3>Rootkit detection</h3>
-  <pre># Callback registrate
+  <div class="box box-why">I rootkit manipolano strutture kernel per nascondere la propria presenza. Rilevarli richiede confrontare viste multiple dello stesso dato.</div>
+  <pre><span class="comment"># Callback registrate (target di rootkit kernel-mode)</span>
 vol -f memory.raw windows.callbacks
 
-# SSDT hook
+<span class="comment"># SSDT hook (System Service Descriptor Table)</span>
 vol -f memory.raw windows.ssdt
 
-# Driver caricati
+<span class="comment"># Driver caricati</span>
 vol -f memory.raw windows.driverscan</pre>
 
   <h3>MemProcFS - memory come filesystem</h3>
-  <pre># Windows
+  <div class="box box-why">MemProcFS monta il dump come filesystem navigabile. Ogni processo è una cartella, ogni regione di memoria un file. Ottimo per esplorazione iniziale e condivisione con chi non conosce Volatility.</div>
+  <pre><span class="comment"># Windows</span>
 MemProcFS.exe -device C:\memory.raw -mount M:
 
-# Linux (richiede FUSE)
+<span class="comment"># Linux (richiede FUSE)</span>
 ./memprocfs -device /tmp/memory.raw -mount /mnt/memory
 
-# Struttura
-M:\pid\&lt;PID&gt;\     # processi
-M:\name\&lt;name&gt;\   # per nome processo
-M:\sys\            # sistema, registry, drivers
-M:\forensic\       # artefatti pre-estratti</pre>
+<span class="comment"># Struttura</span>
+M:\pid\&lt;PID&gt;\     <span class="comment"># processi (command line, modules, threads, handles)</span>
+M:\name\&lt;name&gt;\   <span class="comment"># raggruppamento per nome processo</span>
+M:\sys\            <span class="comment"># sistema, registry, drivers</span>
+M:\forensic\       <span class="comment"># artefatti pre-estratti (YARA scan, pagine sospette)</span></pre>
 
   <h3>Workflow Memory Forensics</h3>
+  <div class="box box-tip">Segui questo ordine. Non saltare passaggi: ogni step orienta il successivo.</div>
   <ol>
-    <li>Acquisizione + hash SHA-256 per integrità</li>
-    <li><code>vol -f memory.raw windows.info</code></li>
-    <li>Processi: pslist, psscan, pstree, cmdline</li>
-    <li>Rete: netscan</li>
-    <li>Code injection: malfind</li>
-    <li>Persistence: registry.hivelist, printkey Run</li>
-    <li>Rootkit: callbacks, ssdt, driverscan</li>
-    <li>Dump processi sospetti: memmap --dump</li>
-    <li>Estrazione credenziali (se autorizzato)</li>
-    <li>Correlazione con log e PCAP</li>
+    <li>Acquisizione + hash SHA-256 per integrità (chain of custody)</li>
+    <li><code>vol -f memory.raw windows.info</code> - conferma versione Windows</li>
+    <li>Processi: pslist, psscan, pstree, cmdline. Incrocia i risultati.</li>
+    <li>Rete: netscan. Cerca connessioni anomale da processi non-network.</li>
+    <li>Code injection: malfind. Cerca pagine RWX con MZ header.</li>
+    <li>Persistence: registry.hivelist, printkey Run. Voci sospette in Run key.</li>
+    <li>Rootkit: callbacks, ssdt, driverscan. Sempre da controllare.</li>
+    <li>Dump processi sospetti: memmap --dump. Per analisi separata.</li>
+    <li>Estrazione credenziali (se autorizzato): hashdump, lsadump.</li>
+    <li>Correlazione con log e PCAP per timeline completa.</li>
   </ol>
   <a class="back-top" href="#">Torna all'indice</a>
 </section>
@@ -782,32 +945,38 @@ M:\forensic\       # artefatti pre-estratti</pre>
 <!-- DISK -->
 <section id="disk">
   <h2>3.4 Disk Forensics &amp; File Carving</h2>
-  <div class="box box-info">Il disco conserva memoria lunga: file, artefatti, attività utente, file cancellati recuperabili.</div>
+  <div class="box box-info">Il disco conserva memoria lunga: file, artefatti, attività utente, file cancellati recuperabili. È la fonte che risponde a "cosa è successo prima".</div>
+
+  <div class="box box-why">Perché il disco è importante: la RAM si perde allo spegnimento, il PCAP va catturato in tempo reale, ma il disco conserva tracce per mesi o anni. File cancellati sono spesso recuperabili. Artefatti Windows accumulano tracce di attività utente anche vecchie.</div>
 
   <h3>NTFS essentials</h3>
+  <div class="box box-why">NTFS è il file system di Windows dal 1993. Introduce caratteristiche forensi ricche: $MFT strutturata, journaling multi-livello, alternate data streams.</div>
+
   <h4>$MFT (Master File Table)</h4>
   <ul>
-    <li>Entry per ogni file/cartella</li>
-    <li><b>$STANDARD_INFORMATION</b>: timestamp MACB (Modified, Accessed, Changed, Born)</li>
-    <li><b>$FILE_NAME</b>: altro set timestamp, nome file</li>
-    <li><b>$DATA</b>: dati residenti o non residenti</li>
+    <li>Entry per ogni file/cartella. Dimensione fissa (1024 byte).</li>
+    <li><b>$STANDARD_INFORMATION</b>: timestamp MACB (Modified, Accessed, Changed, Born). "Born" = creazione, "Changed" = ultimo cambio metadata, "Modified" = ultimo cambio contenuto, "Accessed" = ultimo accesso.</li>
+    <li><b>$FILE_NAME</b>: altro set timestamp, nome file. Un attaccante che fa timestomping modifica solo $STANDARD_INFORMATION e dimentica $FILE_NAME: la discrepanza è IoC.</li>
+    <li><b>$DATA</b>: dati residenti (piccoli file dentro MFT) o non residenti (puntatori a cluster esterni).</li>
   </ul>
-  <p>Timestomping: attaccante modifica $STANDARD_INFORMATION ma dimentica $FILE_NAME → discrepanza IoC.</p>
 
   <h4>$LogFile e $UsnJrnl:$J</h4>
   <ul>
-    <li><b>$LogFile</b>: journal transazionale NTFS</li>
-    <li><b>$UsnJrnl:$J</b>: journal di modifiche file (creazione, modifica, rinomina, cancellazione)</li>
+    <li><b>$LogFile</b>: journal transazionale NTFS per recupero crash. Meno leggibile ma contiene operazioni di breve durata.</li>
+    <li><b>$UsnJrnl:$J</b>: journal di modifiche file. Registra creazione, modifica, rinomina, cancellazione. Se un attaccante cancella file, il journal conserva "file tale creato alle 14:32, cancellato alle 15:48".</li>
   </ul>
 
   <h4>Alternate Data Streams (ADS)</h4>
-  <pre># Sintassi: nomefile.txt:streamnascosto
-# Rilevamento PowerShell
+  <div class="box box-why">NTFS supporta stream multipli per file. Un attaccante può nascondere un eseguibile dentro un file apparentemente innocuo: <code>notepad.exe:malware.exe</code>. Invisible a Explorer ma eseguibile.</div>
+  <pre><span class="comment"># Rilevamento ADS in PowerShell</span>
 Get-Item C:\cartella\file.txt -Stream *
 
-# Zone.Identifier: annota URL di origine file scaricati</pre>
+<span class="comment"># Zone.Identifier: annota URL di origine file scaricati</span>
+<span class="comment"># Se un file ha Zone.Identifier, è stato scaricato da Internet</span></pre>
 
   <h3>Artefatti di esecuzione</h3>
+  <div class="box box-why">Windows tiene traccia dei programmi eseguiti in diversi artefatti. L'incrocio permette di ricostruire cosa è stato lanciato anche senza log specifici.</div>
+
   <h4>Prefetch</h4>
   <ul>
     <li>File <code>.pf</code> in <code>C:\Windows\Prefetch\</code></li>
@@ -815,14 +984,16 @@ Get-Item C:\cartella\file.txt -Stream *
     <li>Parser: PECmd</li>
   </ul>
   <pre>PECmd.exe -d C:\Windows\Prefetch\ --csv C:\Output\ --csvf prefetch.csv</pre>
+  <div class="box box-tip">Un file Prefetch con run count = 1 per un binario "di sistema" (es. notepad) è sospetto: su un sistema normale quel binario è stato eseguito decine di volte.</div>
 
   <h4>ShimCache / AppCompatCache</h4>
   <ul>
     <li>In hive SYSTEM: <code>HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache</code></li>
-    <li>Persistente, sopravvive a cancellazione binario</li>
+    <li>Persistente, sopravvive a cancellazione binario. Spesso conserva tracce di programmi eseguiti mesi fa.</li>
     <li>Parser: AppCompatCacheParser</li>
   </ul>
   <pre>AppCompatCacheParser.exe -f C:\Evidence\SYSTEM --csv C:\Output\ --csvf shimcache.csv</pre>
+  <div class="box box-warn">Attenzione: la semantica di ShimCache varia tra versioni di Windows. In Windows 7 registra ogni esecuzione; in Windows 10/11 registra solo path e timestamp di ultima modifica, senza conferma di esecuzione.</div>
 
   <h4>AmCache</h4>
   <ul>
@@ -831,22 +1002,24 @@ Get-Item C:\cartella\file.txt -Stream *
     <li>Parser: AmcacheParser</li>
   </ul>
   <pre>AmcacheParser.exe -f C:\Windows\AppCompat\Programs\Amcache.hve --csv C:\Output\ --csvf amcache.csv</pre>
+  <div class="box box-tip">L'hash SHA-1 in AmCache permette di identificare univocamente i binari eseguiti, anche se rinominati o cancellati. Confronta gli hash con VirusTotal/MalwareBazaar.</div>
 
   <h4>Correlazione dei tre</h4>
-  <p>Binario in Prefetch + ShimCache + AmCache = esecuzione documentata a 3 fonti.</p>
+  <div class="box box-why">Prefetch + ShimCache + AmCache = quadro completo dell'attività. Un binario in tutti e tre è esecuzione documentata a 3 fonti indipendenti. Un binario in uno solo merita indagine.</div>
 
   <h3>Artefatti di attività utente</h3>
+
   <h4>ShellBags</h4>
+  <div class="box box-why">Entry di registro che Windows scrive quando un utente naviga cartelle tramite Explorer. Persistono anche dopo che la cartella è stata cancellata o l'USB scollegato.</div>
   <ul>
-    <li>Entry registro di cartelle visitate in Explorer</li>
     <li>In NTUSER.DAT: <code>HKCU\Software\Microsoft\Windows\Shell\BagMRU</code></li>
-    <li>Persistono dopo cancellazione cartella o USB scollegato</li>
     <li>Parser: SBECmd, ShellBagsExplorer</li>
   </ul>
+  <div class="box box-tip">Una ShellBag per <code>F:\Documents\Riservati\</code> rivela che l'utente ha visitato quella cartella, anche se il drive F: non è mai più stato collegato.</div>
 
   <h4>JumpList</h4>
   <ul>
-    <li>Liste file recenti per applicazione</li>
+    <li>Liste file recenti per applicazione (tasto destro su icona Taskbar)</li>
     <li>In <code>C:\Users\&lt;user&gt;\AppData\Roaming\Microsoft\Windows\Recent\AutomaticDestinations\</code></li>
     <li>Parser: JLECmd</li>
   </ul>
@@ -857,6 +1030,7 @@ Get-Item C:\cartella\file.txt -Stream *
     <li>In <code>C:\Users\&lt;user&gt;\AppData\Roaming\Microsoft\Windows\Recent\</code></li>
     <li>Parser: LECmd</li>
   </ul>
+  <div class="box box-tip">Un LNK in Recent di un file su USB rivela il serial number del volume USB collegato al sistema, anche se l'USB non è più presente.</div>
 
   <h4>Recycle Bin</h4>
   <ul>
@@ -865,14 +1039,17 @@ Get-Item C:\cartella\file.txt -Stream *
     <li><code>$R&lt;codice&gt;</code>: contenuto file originale</li>
     <li>Parser: RBCmd</li>
   </ul>
+  <div class="box box-tip">Il Recycle Bin è utile perché in molti incidenti i file malevoli vengono spostati lì dall'antivirus prima di essere rimossi. I timestamp di cancellazione raccontano la risposta automatica alla minaccia.</div>
 
   <h3>SRUM e Windows Timeline</h3>
+
   <h4>SRUM</h4>
   <ul>
     <li><code>C:\Windows\System32\sru\SRUDB.dat</code></li>
-    <li>Bytes inviati/ricevuti per applicazione, CPU time, disco</li>
+    <li>Bytes inviati/ricevuti per applicazione, CPU time, disco, power</li>
     <li>Parser: SrumECmd</li>
   </ul>
+  <div class="box box-why">Il valore forense di SRUM è enorme: anche per un malware di cui non c'è altro log, SRUM registra i byte inviati/ricevuti via rete. Utile per rilevare esfiltrazione retroattiva anche mesi dopo.</div>
 
   <h4>Windows Timeline</h4>
   <ul>
@@ -882,20 +1059,23 @@ Get-Item C:\cartella\file.txt -Stream *
   </ul>
 
   <h3>KAPE - triage tool</h3>
-  <pre># Raccolta artefatti
+  <div class="box box-why">KAPE (Kroll Artifact Parser and Extractor) automatizza la raccolta di tutti gli artefatti forensi standard da un host. Su un sistema live, copia in un output strutturato: $MFT, .evtx, registry hive, Prefetch, AmCache, ShimCache, browser history, ShellBags, JumpList, LNK, Recycle Bin, SRUM, Windows Timeline. Poi passa il tutto a tool di parsing (inclusa la suite Zimmerman).</div>
+  <pre><span class="comment"># Raccolta artefatti base</span>
 kape.exe --tsource C: --target !BasicCollection --tdest C:\Triage\
 
-# Raccolta + parsing
+<span class="comment"># Raccolta + parsing immediato (produce CSV navigabili)</span>
 kape.exe --tsource C: --target !BasicCollection --tdest C:\Triage\ --mdest C:\Parsed\ --module !EZParser</pre>
 
   <h3>Browser forensics</h3>
+  <div class="box box-why">Il browser è una delle applicazioni più usate. Lascia artefatti preziosi: cronologia, cookie, credenziali salvate, form data.</div>
+
   <h4>Chrome / Edge (Chromium)</h4>
   <ul>
     <li><code>C:\Users\&lt;user&gt;\AppData\Local\Google\Chrome\User Data\Default\</code></li>
-    <li><b>History</b>: cronologia, download, chiavi ricerca</li>
-    <li><b>Cookies</b>: cookie sessione</li>
-    <li><b>Login Data</b>: credenziali salvate (DPAPI)</li>
-    <li><b>Web Data</b>: form data</li>
+    <li><b>History</b>: cronologia, download, chiavi ricerca (SQLite)</li>
+    <li><b>Cookies</b>: cookie sessione (SQLite)</li>
+    <li><b>Login Data</b>: credenziali salvate (cifrate con DPAPI)</li>
+    <li><b>Web Data</b>: form data, metodi pagamento</li>
     <li><b>Bookmarks</b>: JSON</li>
   </ul>
 
@@ -909,102 +1089,109 @@ kape.exe --tsource C: --target !BasicCollection --tdest C:\Triage\ --mdest C:\Pa
 
   <h4>Strumenti</h4>
   <ul>
-    <li><b>DB Browser for SQLite</b>: GUI per SQLite</li>
-    <li><b>Hindsight</b>: parsing Chromium automatico</li>
-    <li><b>Autopsy</b>: moduli browser analysis</li>
+    <li><b>DB Browser for SQLite</b>: GUI gratuita per SQLite. Primo approccio manuale.</li>
+    <li><b>Hindsight</b>: parsing automatico Chromium, export CSV/JSON/XLSX</li>
+    <li><b>Autopsy</b>: moduli browser analysis aggregati</li>
   </ul>
 
   <h3>Autopsy e The Sleuth Kit</h3>
+  <div class="box box-why">TSK è la libreria CLI di riferimento per analisi di file system. Autopsy è la GUI costruita sopra. Supportano NTFS, FAT, ext2/3/4, HFS+, UFS, YAFFS2.</div>
+
   <h4>TSK (CLI)</h4>
-  <pre># Layout partizioni
+  <pre><span class="comment"># Layout partizioni di un disk image</span>
 mmls evidence.dd
 
-# Elenca file (anche cancellati)
+<span class="comment"># Elenca file (anche cancellati) su una partizione</span>
 fls -r -o 2048 evidence.dd
 
-# Estrai contenuto file per inode
+<span class="comment"># Estrai contenuto di un file via inode</span>
 icat -o 2048 evidence.dd 42315 &gt; recovered_file.pdf
 
-# Info filesystem
+<span class="comment"># Info generali sul file system</span>
 fsstat -o 2048 evidence.dd
 
-# Dettagli inode
+<span class="comment"># Dettagli di un inode specifico</span>
 istat -o 2048 evidence.dd 42315</pre>
 
   <h4>Autopsy (GUI)</h4>
   <ul>
     <li>Carica disk image (E01, raw, VMDK, VHD)</li>
-    <li>Navigazione file system con file cancellati</li>
-    <li>Ricerca keyword full-text</li>
+    <li>Navigazione file system con visualizzazione file cancellati</li>
+    <li>Ricerca keyword con indicizzazione full-text</li>
     <li>Timeline integrata</li>
     <li>Moduli browser, registry, email, EXIF, YARA</li>
+    <li>Curva di apprendimento accessibile</li>
   </ul>
 
   <h3>File carving</h3>
+  <div class="box box-why">Il file carving recupera file dal contenuto grezzo di un dispositivo, senza affidarsi al file system. Utile per: file cancellati non ancora sovrascritti, dispositivi danneggiati.</div>
+
   <h4>Signature comuni</h4>
   <ul>
-    <li><b>JPEG</b>: <code>FF D8 FF</code> ... <code>FF D9</code></li>
-    <li><b>PNG</b>: <code>89 50 4E 47</code> ... <code>IEND</code></li>
-    <li><b>PDF</b>: <code>%PDF-</code> ... <code>%%EOF</code></li>
-    <li><b>ZIP</b>: <code>50 4B 03 04</code></li>
-    <li><b>EXE</b>: <code>MZ</code> (4D 5A)</li>
+    <li><b>JPEG</b>: inizia <code>FF D8 FF</code>, finisce <code>FF D9</code></li>
+    <li><b>PNG</b>: inizia <code>89 50 4E 47</code>, finisce con chunk <code>IEND</code></li>
+    <li><b>PDF</b>: inizia <code>%PDF-</code>, finisce <code>%%EOF</code></li>
+    <li><b>ZIP</b>: inizia <code>50 4B 03 04</code></li>
+    <li><b>EXE</b>: inizia <code>MZ</code> (4D 5A)</li>
   </ul>
 
   <h4>Strumenti</h4>
-  <pre># PhotoRec
+  <pre><span class="comment"># PhotoRec - tool classico, recupera foto e documenti</span>
 sudo photorec
 
-# Foremost
+<span class="comment"># Foremost - riconosce decine di signature</span>
 foremost -t jpg -i evidence.dd -o recovered/
 
-# Scalpel (config scalpel.conf)
+<span class="comment"># Scalpel - configurable tramite scalpel.conf</span>
 scalpel -c scalpel.conf evidence.dd -o output/
 
-# bulk_extractor (feature extraction)
+<span class="comment"># bulk_extractor - carving non di file ma di feature (email, URL, IP, carte credito)</span>
 bulk_extractor -o output/ evidence.dd</pre>
 
   <h3>Plaso / log2timeline</h3>
-  <pre># Crea supertimeline
+  <div class="box box-why">Aggrega tutti gli artefatti in una supertimeline unica. Oltre 100 parser: EVTX, registry, browser history, prefetch, $MFT, cloud logs. Tutto unificato per timestamp.</div>
+  <pre><span class="comment"># Crea supertimeline da disk image</span>
 log2timeline.py --storage-file timeline.plaso evidence.dd
 
-# Esporta in CSV
+<span class="comment"># Esporta in CSV navigabile</span>
 psort.py -o l2tcsv -w timeline.csv timeline.plaso
 
-# Navigazione con Timeline Explorer o Timesketch</pre>
+<span class="comment"># Navigazione con Timeline Explorer o Timesketch (web collaborativo)</span></pre>
 
   <h3>Volume Shadow Copies, BitLocker</h3>
+
   <h4>VSS</h4>
-  <pre># Elenca shadow
+  <div class="box box-why">Windows crea automaticamente snapshot periodici del volume di sistema. Conservano versioni precedenti di file, spesso pre-compromissione. Un attaccante che cancella un file può comunque aver lasciato la versione originale in uno shadow copy.</div>
+  <pre><span class="comment"># Elenca shadow copies</span>
 vssadmin list shadows
 
-# Monta
-# Arsenal Image Mounter (GUI)
-
-# Autopsy ha moduli per estrazione VSS</pre>
+<span class="comment"># Monta come volumi accessibili</span>
+<span class="comment"># Arsenal Image Mounter (GUI) o Autopsy (moduli per estrazione VSS)</span></pre>
 
   <h4>BitLocker</h4>
   <ul>
     <li>Richiede recovery key (48 cifre) o BEK file o TPM</li>
-    <li><b>dislocker</b>: Linux, free</li>
-    <li><b>Arsenal Image Mounter</b>: commerciale</li>
+    <li><b>dislocker</b>: Linux, free open source</li>
+    <li><b>Arsenal Image Mounter</b>: commerciale, supporto BitLocker in versione Pro</li>
   </ul>
 
   <h3>Altri file system</h3>
   <ul>
-    <li><b>APFS (macOS)</b>: TSK supporta, apfs-fuse per Linux</li>
-    <li><b>ext4 (Linux)</b>: TSK supporta, debugfs per interrogazione</li>
+    <li><b>APFS (macOS)</b>: TSK supporta nelle versioni recenti. Alternativa: apfs-fuse per Linux.</li>
+    <li><b>ext4 (Linux)</b>: TSK supporta. debugfs per interrogazione diretta.</li>
   </ul>
-  <pre># ext4 info
+  <pre><span class="comment"># ext4 info filesystem</span>
 debugfs -R "stats" /dev/sda1
 
-# File cancellati recuperabili
+<span class="comment"># File cancellati recuperabili</span>
 debugfs -R "lsdel" /dev/sda1</pre>
 
   <h3>Workflow Disk Forensics</h3>
+  <div class="box box-tip">Segui questo ordine. Il parsing massivo con KAPE è la scorciatoia per non impazzire.</div>
   <ol>
     <li>Acquisizione imaging (FTK Imager, dd, dc3dd) + hash SHA-256</li>
     <li><code>mmls evidence.dd</code> - layout partizioni</li>
-    <li><code>fsstat -o &lt;offset&gt; evidence.dd</code> - info FS</li>
+    <li><code>fsstat -o &lt;offset&gt; evidence.dd</code> - info file system</li>
     <li>KAPE per parsing massivo (MFT, Prefetch, AmCache, ShimCache, EventLog, Registry, JumpList, ShellBags, LNK, SRUM)</li>
     <li>Plaso per supertimeline</li>
     <li>Analisi con Timeline Explorer / Timesketch</li>
@@ -1019,221 +1206,243 @@ debugfs -R "lsdel" /dev/sda1</pre>
 <!-- MALWARE -->
 <section id="malware">
   <h2>3.5 Malware Analysis</h2>
-  <div class="box box-warn">Regola 1: sample live SOLO in VM isolata, senza connessione a Internet reale. Mai su host. Mai con cartelle condivise.</div>
+  <div class="box box-warn">Regola 1: sample live SOLO in VM isolata, senza connessione a Internet reale. Mai su host. Mai con cartelle condivise. Mai con clipboard condivisa.</div>
+
+  <div class="box box-why">Perché questa regola è tripla: un comando sbagliato si corregge al tentativo successivo, ma l'esecuzione di un sample di malware sul sistema host produce conseguenze molto più onerose (reinstallazione OS, perdita dati). Le scuole di volo ripetono tre volte le procedure di emergenza per fissarle in memoria.</div>
 
   <h3>Laboratorio</h3>
+  <div class="box box-why">Il setup standard è FlareVM (Windows) + REMnux (Linux) in rete isolata. FlareVM ha tutti gli strumenti di analisi; REMnux emula servizi di rete (INetSim) così il malware crede di parlare con Internet.</div>
   <ul>
-    <li><b>FlareVM</b>: Windows per analisi malware (Mandiant)</li>
-    <li><b>REMnux</b>: Linux per analisi (Zeltser)</li>
-    <li><b>INetSim / FakeNet-NG</b>: emulatori servizi rete</li>
+    <li><b>FlareVM</b>: Windows per analisi malware (Mandiant). Preinstalla centinaia di tool.</li>
+    <li><b>REMnux</b>: Linux per analisi (Zeltser). Analisi PDF, Office, sandbox network, disassembler.</li>
+    <li><b>INetSim / FakeNet-NG</b>: emulatori servizi rete. Rispondono a qualsiasi richiesta con risposte fittizie ma plausibili.</li>
     <li>Rete host-only o internal network, mai bridged/NAT verso Internet</li>
-    <li>Snapshot pulito obbligatorio</li>
+    <li>Snapshot pulito obbligatorio (rollback dopo ogni sample)</li>
   </ul>
 
   <h3>Domande a cui rispondere</h3>
+  <div class="box box-why">Un'analisi di malware deve produrre risposte concrete. Queste sei domande sono l'agenda implicita di ogni report.</div>
   <ol>
-    <li>Cosa fa il binario?</li>
-    <li>Come si propaga e persiste?</li>
-    <li>Con chi parla?</li>
-    <li>Cosa esfiltra?</li>
-    <li>Da dove viene?</li>
-    <li>Come si difende dal rilevamento?</li>
+    <li>Cosa fa il binario? (file creati, processi avviati, chiavi registro)</li>
+    <li>Come si propaga e persiste? (Run key, scheduled task, servizio)</li>
+    <li>Con chi parla? (domini, IP, protocolli C2)</li>
+    <li>Cosa esfiltra? (documenti, credenziali, screenshot)</li>
+    <li>Da dove viene? (famiglia, variante, build)</li>
+    <li>Come si difende dal rilevamento? (anti-debug, anti-VM, packing)</li>
   </ol>
 
   <h3>Output operativi</h3>
   <ul>
-    <li><b>IoC</b>: hash, IP, domini, mutex, percorsi</li>
-    <li><b>Regole detection</b>: YARA, Sigma, Snort/Suricata</li>
-    <li><b>TTP mappate ad ATT&amp;CK</b></li>
+    <li><b>IoC</b> (Indicator of Compromise): hash, IP, domini, mutex, percorsi. Valori specifici utili per rilevare la stessa minaccia.</li>
+    <li><b>Regole detection</b>: YARA (binari), Sigma (log), Snort/Suricata (rete). Generalizzazioni degli IoC.</li>
+    <li><b>TTP mappate ad ATT&amp;CK</b>: la sequenza di tecniche usate, in linguaggio MITRE.</li>
   </ul>
+  <div class="box box-tip">La differenza tra IoC e TTP: un IoC (hash) è specifico di un sample, un TTP è la logica dell'attacco. Un attaccante cambia hash in un'ora ma non riprogetta la sua catena di comandi in un giorno. In CTF, mappa sempre le TTP per il report.</div>
 
   <h3>Static analysis - leggere senza eseguire</h3>
+  <div class="box box-why">L'analisi statica è sicura per definizione (il binario non viene eseguito). È veloce (minuti) e orienta tutta l'analisi successiva.</div>
+
   <h4>Formato PE (Windows)</h4>
   <ul>
     <li>Header MZ, header NT, sezioni (.text, .data, .rsrc, .rdata)</li>
-    <li><b>Entropia</b>: &gt;7.5 = packed/cifrato</li>
-    <li><b>Nomi sezioni</b>: .upx0, .aspack, .themida = packer</li>
-    <li><b>Import minimi</b>: LoadLibrary + GetProcAddress = packer</li>
-    <li><b>Risorse anomale</b>: payload secondario</li>
-    <li><b>Timestamp compilazione</b> strano</li>
+    <li><b>Entropia</b>: &gt;7.5 (su scala 0-8) = packed/cifrato. Codice normale ha entropia 5.5-6.5.</li>
+    <li><b>Nomi sezioni</b>: .upx0, .aspack, .themida = packer specifico. Nomi randomici = sospetto.</li>
+    <li><b>Import minimi</b>: LoadLibrary + GetProcAddress = packer (tutto risolto a runtime)</li>
+    <li><b>Risorse anomale</b>: exe da 50 KB con risorsa .rsrc da 2 MB = payload secondario nascosto</li>
+    <li><b>Timestamp compilazione</b> strano (futuro o passato remoto) = manipolato</li>
   </ul>
 
   <h4>Tool static</h4>
   <ul>
-    <li><b>PEstudio</b>: triage PE con IoC evidenziati</li>
-    <li><b>Detect It Easy (DIE)</b>: packer, compilatore, entropia</li>
-    <li><b>CFF Explorer</b>: editor PE completo</li>
-    <li><b>PE-bear</b>: analisi e diffing PE</li>
-    <li><b>capa</b>: mappa capability ad ATT&amp;CK</li>
-    <li><b>FLOSS</b>: stringhe normali e offuscate</li>
-    <li><b>YARA</b>: pattern matching</li>
+    <li><b>PEstudio</b>: triage PE con IoC evidenziati. Sempre il primo strumento aperto.</li>
+    <li><b>Detect It Easy (DIE)</b>: identifica packer, compilatore, entropia per sezione.</li>
+    <li><b>CFF Explorer</b>: editor PE completo.</li>
+    <li><b>PE-bear</b>: analisi e diffing PE. Utile per confrontare varianti.</li>
+    <li><b>capa</b>: mappa capability ad ATT&amp;CK automaticamente.</li>
+    <li><b>FLOSS</b>: estrae stringhe normali + offuscate (stack strings, decoded).</li>
+    <li><b>YARA</b>: pattern matching contro regole community o proprie.</li>
   </ul>
 
-  <pre># Hash
+  <pre><span class="comment"># Hash del sample (SHA-256 per identificazione univoca)</span>
 sha256sum sample.exe
 
-# Detect It Easy
+<span class="comment"># Detect It Easy: packer, compilatore, entropia</span>
 die sample.exe
 
-# capa
+<span class="comment"># PEstudio (GUI): apri sample.exe, evidenzia IoC</span>
+
+<span class="comment"># capa: capability mappate ad ATT&CK</span>
 capa sample.exe
 
-# FLOSS
+<span class="comment"># FLOSS: stringhe normali + offuscate</span>
 floss sample.exe &gt; strings.txt
 
-# YARA
+<span class="comment"># YARA: pattern matching contro ruleset community</span>
 yara -r signature-base/yara/ sample.exe</pre>
 
   <h3>Dynamic analysis - osservare in azione</h3>
+  <div class="box box-why">L'analisi attiva completa la statica: mostra cosa il binario fa effettivamente, incluse scelte runtime e payload scaricati. Differenza: statica = leggere sceneggiatura, attiva = vedere film proiettato.</div>
+
   <h4>Tool</h4>
   <ul>
-    <li><b>Process Monitor (Procmon)</b>: filesystem, registry, processi, rete</li>
-    <li><b>System Informer</b>: vista live processi, thread, handle, moduli</li>
-    <li><b>Autoruns</b>: snapshot persistenza</li>
-    <li><b>TCPView</b>: connessioni TCP/UDP</li>
+    <li><b>Process Monitor (Procmon)</b>: filesystem, registry, processi, rete a livello kernel</li>
+    <li><b>System Informer</b>: vista live processi, thread, handle, moduli (erede di Process Hacker)</li>
+    <li><b>Autoruns</b>: snapshot persistenza (Run keys, servizi, tasks, WMI)</li>
+    <li><b>TCPView</b>: connessioni TCP/UDP con processo associato</li>
     <li><b>Wireshark</b>: cattura traffico</li>
-    <li><b>Noriben</b>: wrapper Procmon con report</li>
-    <li><b>Regshot</b>: snapshot registry pre/post</li>
+    <li><b>Noriben</b>: wrapper Procmon con report di sintesi automatico</li>
+    <li><b>Regshot</b>: snapshot registry pre/post, diff</li>
   </ul>
 
   <h4>Sequenza</h4>
   <ol>
-    <li>Autoruns + Regshot snapshot pre</li>
-    <li>Procmon armato, Wireshark in cattura</li>
-    <li>Esecuzione sample</li>
+    <li>Autoruns + Regshot snapshot pre-esecuzione</li>
+    <li>Procmon armato con filtro, Wireshark in cattura, Process Hacker in vista</li>
+    <li>Esecuzione sample (doppio click, o runas se serve contesto)</li>
     <li>Osservazione 30-60 secondi</li>
     <li>Stop tool</li>
     <li>Autoruns + Regshot snapshot post</li>
-    <li>Noriben report</li>
+    <li>Noriben report di sintesi</li>
   </ol>
 
   <h3>Reverse engineering</h3>
+  <div class="box box-why">Statica e attiva portano fino a un certo punto. Per capire perché un byte è cifrato in un certo modo, serve scendere nel codice assembly. Questo è RE, la competenza che distingue analista junior da esperto.</div>
   <ul>
-    <li><b>Ghidra</b>: decompilatore NSA, open source</li>
-    <li><b>IDA Free</b>: disassembler x64 classico</li>
-    <li><b>radare2 / Cutter</b>: framework CLI + GUI</li>
+    <li><b>Ghidra</b>: decompilatore NSA, open source, multi-piattaforma (x86/x64/ARM/MIPS)</li>
+    <li><b>IDA Free</b>: disassembler x64 classico (versione Pro = standard industriale)</li>
+    <li><b>radare2 / Cutter</b>: framework CLI + GUI, ottimo per scripting</li>
   </ul>
-  <p>Leggere pseudo-C dal decompilatore, riconoscere pattern, annotare funzioni.</p>
+  <div class="box box-tip">Il principio: leggi pseudo-C dal decompilatore, riconosci pattern, annota funzioni con nomi parlanti. Es. una funzione che fa XOR con 0x4D su ogni byte è probabilmente decryption di stringhe.</div>
 
   <h3>FLARE Learning Hub</h3>
+  <div class="box box-why">Pubblicato da Mandiant nell'aprile 2026. Rende pubblici i materiali didattici del team FLARE (reverse engineer e malware analyst di Mandiant). È la spina dorsale del percorso pratico consigliato.</div>
   <ul>
-    <li><b>Malware Analysis Crash Course</b>: assembly, Windows internals, API</li>
-    <li><b>Go Reverse Engineering Reference</b>: RE di eseguibili Go</li>
-    <li><b>Introduction to Time Travel Debugging</b>: WinDbg TTD</li>
+    <li><b>Malware Analysis Crash Course</b>: assembly, Windows internals, API. On-ramp per chi non ha mai fatto RE.</li>
+    <li><b>Go Reverse Engineering Reference</b>: RE di eseguibili Go. Competenza in crescita (malware moderno scritto in Go).</li>
+    <li><b>Introduction to Time Travel Debugging</b>: WinDbg TTD applicato a triage malware.</li>
   </ul>
   <p>URL: github.com/mandiant/flare-learning-hub</p>
 
   <h3>Time Travel Debugging (TTD)</h3>
+  <div class="box box-why">TTD registra l'esecuzione di un processo come un nastro riavvolgibile. Dopo la cattura, l'analista può tornare indietro nel tempo e ricostruire come una pagina RWX è stata allocata, da quale routine è stato copiato lo shellcode. Ideale per process hollowing, unpacking, anti-analisi.</div>
   <ul>
-    <li>Registra esecuzione di un processo come un nastro riavvolgibile</li>
     <li>File <code>.run</code> di 50-500 MB</li>
-    <li>Comandi: <code>g-</code> (go backward), <code>p-</code> (step backward), <code>!tt</code> (time travel)</li>
-    <li>Ideale per: process hollowing, unpacking, anti-analisi</li>
+    <li>Comandi: <code>g-</code> (go backward), <code>p-</code> (step backward), <code>!tt</code> (time travel a punto specifico)</li>
+    <li>Il modulo FLARE è la guida definitiva</li>
   </ul>
 
   <h3>Sandbox automatizzate</h3>
+  <div class="box box-why">Eseguono il sample in VM controllata e producono report automatici con comportamenti osservati, IoC, capability. Utili per triage ad alto volume e analisi di conferma.</div>
   <ul>
-    <li><b>CAPEv2</b>: self-hosted open source</li>
-    <li><b>Any.Run</b>: cloud freemium, interattivo (tier free rende sample pubblico)</li>
-    <li><b>Triage (Hatching)</b>: cloud freemium</li>
-    <li><b>Hybrid Analysis</b>: cloud freeware</li>
-    <li><b>Joe Sandbox Cloud Basic</b>: cloud freemium</li>
-    <li><b>VirusTotal</b>: aggregatore 70+ motori AV</li>
+    <li><b>CAPEv2</b>: self-hosted open source. Report dettagliati, plugin estensibili. Scelta per sample sensibili.</li>
+    <li><b>Any.Run</b>: cloud freemium, interattivo in browser. Tier free rende sample pubblico.</li>
+    <li><b>Triage (Hatching)</b>: cloud freemium, ottima classificazione</li>
+    <li><b>Hybrid Analysis</b>: cloud freeware con account</li>
+    <li><b>Joe Sandbox Cloud Basic</b>: cloud freemium, qualità elevata</li>
+    <li><b>VirusTotal</b>: aggregatore 70+ motori AV + motore comportamentale</li>
   </ul>
-  <div class="box box-warn">Sample cliente SOLO in sandbox private (CAPEv2). Tier free rende sample pubblico = violazione contrattuale.</div>
+  <div class="box box-warn">Sample cliente SOLO in sandbox private (CAPEv2 interno). Tier free rende sample pubblico = violazione contrattuale e potenzialmente normativa. Se il sample è una build personalizzata, l'attaccante vede che è stato sottomesso e cambia infrastruttura.</div>
 
   <h3>Documenti malevoli</h3>
+  <div class="box box-why">Una fetta significativa di infezioni reali parte da documenti armati: PDF con JavaScript, Office con macro, LNK in archivi ZIP, file HTA. I filtri email bloccano .exe ma lasciano passare .docx, .pdf, .xls, .zip, .iso.</div>
+
   <h4>Office (.doc, .docx, .xls, .xlsx)</h4>
-  <pre># olevba - estrae e disassembla macro VBA
+  <pre><span class="comment"># olevba: estrae e disassembla macro VBA</span>
 olevba documento.docm
 
-# oleid - identifica tipo documento
+<span class="comment"># oleid: identifica tipo documento, presenza macro, oggetti embedded</span>
 oleid documento.docm
 
-# olemeta - metadata
+<span class="comment"># olemeta: metadata (autore, data creazione)</span>
 olemeta documento.docm
 
-# rtfobj - analisi RTF
+<span class="comment"># rtfobj: analisi file RTF con oggetti embedded</span>
 rtfobj documento.rtf</pre>
+  <div class="box box-tip">Pattern tipico in macro malevola: <code>AutoOpen()</code> (routine eseguita all'apertura), <code>Shell cmd, vbHide</code> (lancio nascosto), <code>powershell -enc base64</code>. olevba evidenzia automaticamente questi pattern come "suspicious".</div>
 
   <h4>PDF</h4>
-  <pre># pdfid - riepilogo indicatori
+  <pre><span class="comment"># pdfid: riepilogo indicatori rapidi</span>
 pdfid.py documento.pdf
 
-# pdf-parser - dettaglio oggetti
+<span class="comment"># pdf-parser: dettaglio di ogni oggetto</span>
 pdf-parser.py documento.pdf
 
-# peepdf - analisi interattiva
+<span class="comment"># peepdf: analisi interattiva</span>
 peepdf documento.pdf</pre>
+  <div class="box box-tip">In un PDF malevolo cerca: <code>/JavaScript</code> o <code>/JS</code> (codice embedded), <code>/OpenAction</code> (esecuzione automatica), <code>/Launch</code> (lancio programmi esterni), <code>/EmbeddedFile</code> (payload cifrato), <code>/URI</code> in numero elevato (redirect).</div>
 
   <h4>LNK</h4>
   <pre>LECmd.exe -f file.lnk</pre>
+  <div class="box box-tip">Un LNK malevolo tipico ha target <code>cmd.exe</code> o <code>powershell.exe</code> con argomenti base64 encoded o script inline che scaricano il payload.</div>
 
   <h4>HTA / JS / VBS</h4>
   <ul>
-    <li><b>js-beautify</b>: formatta JavaScript</li>
-    <li><b>box-js</b>: esegue JavaScript in sandbox</li>
+    <li><b>js-beautify</b>: formatta JavaScript offuscato</li>
+    <li><b>box-js</b>: esegue JavaScript in sandbox per vedere cosa produce</li>
     <li><b>ViperMonkey</b>: emula VBA</li>
   </ul>
 
   <h3>Anti-analisi</h3>
+  <div class="box box-why">Il malware moderno sa che qualcuno proverà ad analizzarlo. Implementa routine per (a) rilevare l'ambiente di analisi, (b) rendere difficile il RE statico, (c) ostacolare il debug attivo. Riconoscerle è parte del mestiere: non riconoscerle porta a falsi negativi ("il sample non fa nulla" quando in realtà sta nascondendosi).</div>
+
   <h4>Anti-debug</h4>
   <ul>
-    <li><code>IsDebuggerPresent()</code></li>
-    <li><code>CheckRemoteDebuggerPresent()</code></li>
-    <li>Lettura PEB.BeingDebugged</li>
-    <li><code>NtQueryInformationProcess(ProcessDebugPort)</code></li>
-    <li>Timing con RDTSC</li>
-    <li>Exception-based</li>
+    <li><code>IsDebuggerPresent()</code>: API Windows, check primitivo</li>
+    <li><code>CheckRemoteDebuggerPresent()</code>: variante per debugger remoti</li>
+    <li>Lettura PEB.BeingDebugged (offset 0x02 del PEB)</li>
+    <li><code>NtQueryInformationProcess(ProcessDebugPort)</code>: ritorna handle al debugger</li>
+    <li>Timing con RDTSC: delta abnormi = debug attivo</li>
+    <li>Exception-based: genera eccezione, controlla se handler eseguito</li>
   </ul>
 
   <h4>Anti-VM</h4>
   <ul>
     <li>CPUID hypervisor bit (bit 31 di ECX dopo CPUID EAX=1)</li>
-    <li>Stringhe vendor CPU: "VMwareVMware", "VBoxVBox"</li>
-    <li>Driver VM: VBoxGuest.sys, vmmouse.sys</li>
-    <li>Processi VM tools: VBoxTray.exe, VMwareTray.exe</li>
-    <li>MAC address: 00:05:69 (VMware), 08:00:27 (VirtualBox)</li>
+    <li>Stringhe vendor CPU: "VMwareVMware", "VBoxVBox", "Microsoft Hv"</li>
+    <li>Driver VM: VBoxGuest.sys, vmmouse.sys, vmsrvc.sys</li>
+    <li>Processi VM tools: VBoxTray.exe, VMwareTray.exe, vmtoolsd.exe</li>
+    <li>MAC address: 00:05:69 (VMware), 08:00:27 (VirtualBox), 00:15:5D (Hyper-V)</li>
     <li>Chiavi registro: HKLM\HARDWARE\ACPI\DSDT\VBOX__</li>
   </ul>
 
   <h4>Anti-analisi ambientale</h4>
   <ul>
-    <li>Numero file recenti in Recent</li>
-    <li>Uptime sistema</li>
-    <li>Cronologia browser, dimensione Desktop</li>
-    <li>Movimento mouse, digitazione</li>
+    <li>Numero di file recenti in Recent (utente normale ne ha molti, VM fresca quasi nessuno)</li>
+    <li>Uptime sistema (VM tipicamente minuti, utente reale ore/giorni)</li>
+    <li>Cronologia browser, dimensione Desktop, presenza di file .docx</li>
+    <li>Movimento mouse o digitazione recenti</li>
   </ul>
 
   <h4>Packing</h4>
   <ul>
-    <li><b>UPX</b>: unpack con <code>upx -d</code></li>
-    <li><b>ASPack, ASProtect</b>: commerciali, anti-debug</li>
-    <li><b>Themida, VMProtect</b>: professionali, virtualizzazione codice</li>
-    <li><b>MPRESS, PECompact</b>: leggeri</li>
+    <li><b>UPX</b>: open source, unpack con <code>upx -d</code></li>
+    <li><b>ASPack, ASProtect</b>: commerciali, anti-debug integrato</li>
+    <li><b>Themida, VMProtect</b>: professionali, virtualizzazione del codice. Molto difficili da unpackare.</li>
+    <li><b>MPRESS, PECompact</b>: compressori più leggeri</li>
     <li><b>Custom</b>: entropia &gt;7, IAT minimal, stringhe assenti</li>
   </ul>
 
   <h4>Offuscamento stringhe</h4>
   <ul>
-    <li>Stack strings (FLOSS le estrae)</li>
-    <li>XOR/RC4 con chiave hardcoded</li>
-    <li>Stringhe in risorse (.rsrc)</li>
-    <li>Stringhe fetched da remoto</li>
+    <li><b>Stack strings</b>: stringa costruita istruzione per istruzione. FLOSS le estrae automaticamente.</li>
+    <li><b>XOR/RC4 con chiave hardcoded</b>: stringa cifrata presente, decifrata on-demand. FLOSS tenta decryption.</li>
+    <li><b>Stringhe in risorse</b>: payload cifrato nella sezione .rsrc.</li>
+    <li><b>Stringhe fetched da remoto</b>: non nel binario, scaricate dal C2 dopo connessione. Appaiono solo in analisi attiva.</li>
   </ul>
 
   <h3>Sample didattici sicuri</h3>
+  <div class="box box-warn">Regola pedagogica rigorosa: i primi 6 mesi di studio esclusivamente EICAR + PMA Labs + MTA PCAP + Flare-On. TheZoo entra solo dopo questi quattro, e solo in modalità static analysis. Sample live da MalwareBazaar solo dopo padronanza completa.</div>
   <table>
-    <tr><th>#</th><th>Sample</th><th>URL</th></tr>
-    <tr><td>1</td><td>EICAR Test File</td><td>eicar.org/download-anti-malware-testfile</td></tr>
-    <tr><td>2</td><td>Practical Malware Analysis Labs</td><td>github.com/mikesiko/PracticalMalwareAnalysis-Labs</td></tr>
-    <tr><td>3</td><td>Malware-Traffic-Analysis PCAP</td><td>malware-traffic-analysis.net/training-exercises.html</td></tr>
-    <tr><td>4</td><td>Flare-On Challenges</td><td>flare-on.com</td></tr>
-    <tr><td>5</td><td>theZoo (casi storici)</td><td>github.com/ytisf/theZoo</td></tr>
+    <tr><th>#</th><th>Sample</th><th>URL</th><th>Perché è sicuro</th></tr>
+    <tr><td>1</td><td>EICAR Test File</td><td>eicar.org/download-anti-malware-testfile</td><td>68 byte ASCII, stringa standard riconosciuta da ogni AV come "test positivo". Non è malware.</td></tr>
+    <tr><td>2</td><td>Practical Malware Analysis Labs</td><td>github.com/mikesiko/PracticalMalwareAnalysis-Labs</td><td>Binari scritti apposta per il libro PMA. Comportamento realistico, zero payload distruttivi.</td></tr>
+    <tr><td>3</td><td>Malware-Traffic-Analysis PCAP</td><td>malware-traffic-analysis.net/training-exercises.html</td><td>PCAP di traffico reale di malware, non si esegue nulla. Si analizza il PCAP.</td></tr>
+    <tr><td>4</td><td>Flare-On Challenges</td><td>flare-on.com</td><td>Crackme e binari didattici creati ogni anno dal team FLARE. Nove livelli di difficoltà crescente.</td></tr>
+    <tr><td>5</td><td>theZoo (casi storici)</td><td>github.com/ytisf/theZoo</td><td>Repository educational con sample storici (Stuxnet, WannaCry). Solo static analysis in VM isolata.</td></tr>
   </table>
-  <div class="box box-warn">Primi 6 mesi: solo EICAR + PMA Labs + MTA PCAP + Flare-On. theZoo solo in static analysis. Sample live solo dopo padronanza completa.</div>
 
   <h3>Workflow Malware Analysis</h3>
+  <div class="box box-tip">Segui questo workflow. Non improvvisare. Ogni step produce informazioni che orientano il successivo.</div>
   <ol>
     <li>Preparazione lab: FlareVM isolata, REMnux con INetSim, snapshot pulito</li>
     <li>Ricevimento sample: trasferimento in VM, hash SHA256, rinomina .vir</li>
@@ -1250,35 +1459,41 @@ peepdf documento.pdf</pre>
 <!-- WORKFLOW -->
 <section id="workflow">
   <h2>Workflow Blue Team in CTF</h2>
+  <div class="box box-why">In CTF il tempo è limitato. Avere un workflow chiaro ti fa risparmiare minuti preziosi. Non improvvisare: segui l'ordine.</div>
+
   <h3>Ordine operativo</h3>
   <ol>
-    <li><b>Leggi la traccia</b>: cosa ti danno? PCAP, dump, log, disk image, sample</li>
-    <li><b>Identifica la fonte primaria</b> e inizia da lì</li>
-    <li><b>Overview prima dei dettagli</b>: Statistics, Protocol Hierarchy, info base</li>
-    <li><b>Documenta</b> ogni comando e output</li>
-    <li><b>Correla</b> fonti diverse per ricostruire la timeline</li>
+    <li><b>Leggi la traccia</b>: cosa ti danno? PCAP, dump, log, disk image, sample. Cosa devi trovare? (flag, IP, utente, timestamp)</li>
+    <li><b>Identifica la fonte primaria</b> e inizia da lì. Se hai PCAP + dump, inizia dal PCAP (più navigabile).</li>
+    <li><b>Overview prima dei dettagli</b>: Statistics in Wireshark, windows.info in Volatility, mmls in TSK. 5 minuti di overview fanno risparmiare 30 di analisi sbagliata.</li>
+    <li><b>Documenta</b> ogni comando e output. La flag va consegnata, ma il writeup vale punti bonus.</li>
+    <li><b>Correla</b> fonti diverse per ricostruire la timeline.</li>
   </ol>
 
   <h3>Per tipo di artefatto</h3>
+
   <h4>PCAP</h4>
+  <div class="box box-tip">Se hai un PCAP, il 70% delle volte la flag è in HTTP, DNS o file estratti.</div>
   <ol>
     <li>Statistics: Protocol Hierarchy, Conversations, Endpoints</li>
-    <li>DNS: query sospette, DGA, tunneling</li>
-    <li>HTTP: User-Agent, POST, download</li>
-    <li>TLS: SNI, certificati</li>
+    <li>DNS: query sospette, DGA, tunneling, NXDOMAIN</li>
+    <li>HTTP: User-Agent, POST, download, Basic Auth</li>
+    <li>TLS: SNI, certificati, cipher suite</li>
     <li>Export Objects: file trasferiti</li>
-    <li>Zeek: log strutturati</li>
+    <li>Zeek: log strutturati per PCAP grandi</li>
   </ol>
 
   <h4>Log Windows</h4>
+  <div class="box box-tip">Focus sui 5-6 Event ID più comuni: 4624, 4625, 4688, 7045, 1102, 4769.</div>
   <ol>
     <li>EvtxECmd per parsing massivo</li>
     <li>Timeline Explorer per navigazione</li>
     <li>Chainsaw/Hayabusa con regole Sigma</li>
-    <li>Focus: 4624/4625, 4688, 7045, 1102, 4769</li>
+    <li>Focus: 4624/4625 (login), 4688 (processi), 7045 (servizi), 1102 (log cleared), 4769 (Kerberoasting)</li>
   </ol>
 
   <h4>Memory dump</h4>
+  <div class="box box-tip">Inizia sempre da windows.info, poi processi e rete. Il 70% delle flag sta lì.</div>
   <ol>
     <li>windows.info</li>
     <li>pslist, psscan, pstree, cmdline</li>
@@ -1289,6 +1504,7 @@ peepdf documento.pdf</pre>
   </ol>
 
   <h4>Disk image</h4>
+  <div class="box box-tip">KAPE è la scorciatoia: parsing massivo di tutti gli artefatti in un'operazione.</div>
   <ol>
     <li>mmls, fsstat</li>
     <li>KAPE parsing massivo</li>
@@ -1299,6 +1515,7 @@ peepdf documento.pdf</pre>
   </ol>
 
   <h4>Sample malware</h4>
+  <div class="box box-warn">Sample live SOLO in VM isolata. Mai su host.</div>
   <ol>
     <li>Hash + DIE + PEstudio</li>
     <li>capa + FLOSS + YARA</li>
@@ -1312,306 +1529,306 @@ peepdf documento.pdf</pre>
 <!-- COMANDI -->
 <section id="comandi">
   <h2>Comandi Utili Completi</h2>
+  <div class="box box-tip">Questa sezione è un reference. Cerca con la barra in alto il comando che ti serve. Ogni comando ha un commento che spiega cosa fa.</div>
 
   <h3>Wireshark / tshark</h3>
-  <pre># Filtri display essenziali
-ip.addr == 10.0.0.5
-ip.src == 192.168.1.10 &amp;&amp; tcp.port == 443
-http
-http.request.method == "POST"
-dns
-dns.qry.name contains "evil"
-tls.handshake.type == 1
-tcp.flags.syn == 1 &amp;&amp; tcp.flags.ack == 0
-kerberos.msg_type == 10
-smb2
-ntlmssp
+  <pre><span class="comment"># Filtri display essenziali (applicabili nella barra in alto di Wireshark)</span>
+ip.addr == 10.0.0.5                          <span class="comment"># traffico da/verso IP</span>
+ip.src == 192.168.1.10 &amp;&amp; tcp.port == 443    <span class="comment"># IP sorgente E porta</span>
+http                                          <span class="comment"># solo HTTP</span>
+http.request.method == "POST"                 <span class="comment"># solo POST</span>
+dns                                           <span class="comment"># solo DNS</span>
+dns.qry.name contains "evil"                  <span class="comment"># query DNS contenenti "evil"</span>
+tls.handshake.type == 1                       <span class="comment"># ClientHello TLS</span>
+tcp.flags.syn == 1 &amp;&amp; tcp.flags.ack == 0      <span class="comment"># solo SYN (nuove connessioni)</span>
+kerberos.msg_type == 10                       <span class="comment"># AS-REQ</span>
+smb2                                          <span class="comment"># solo SMB2</span>
+ntlmssp                                       <span class="comment"># solo NTLM auth</span>
 
-# tshark - statistiche
-tshark -r traffic.pcap -q -z io,phs
-tshark -r traffic.pcap -q -z conv,tcp
+<span class="comment"># tshark - statistiche</span>
+tshark -r traffic.pcap -q -z io,phs           <span class="comment"># Protocol Hierarchy</span>
+tshark -r traffic.pcap -q -z conv,tcp         <span class="comment"># conversazioni TCP</span>
 
-# tshark - estrarre campi CSV
+<span class="comment"># tshark - estrarre campi CSV (per pipeline)</span>
 tshark -r traffic.pcap -Y "http.request" -T fields -e ip.src -e http.host -e http.request.uri -E separator=,
 
-# tshark - decodificare porta non standard
+<span class="comment"># tshark - decodificare porta non standard come HTTP</span>
 tshark -r traffic.pcap -d tcp.port==8080,http -Y "http"
 
-# tcpdump
-sudo tcpdump -i eth0 -w cattura.pcap
-tcpdump -r cattura.pcap -c 100 'tcp port 443'
-tcpdump -r cattura.pcap -A 'host 10.0.0.5 and port 80'</pre>
+<span class="comment"># tcpdump - cattura live</span>
+sudo tcpdump -i eth0 -w cattura.pcap          <span class="comment"># cattura su eth0</span>
+tcpdump -r cattura.pcap -c 100 'tcp port 443' <span class="comment"># leggi, max 100, porta 443</span>
+tcpdump -r cattura.pcap -A 'host 10.0.0.5 and port 80'  <span class="comment"># payload ASCII</span></pre>
 
   <h3>Zeek</h3>
-  <pre># Installazione
+  <pre><span class="comment"># Installazione</span>
 sudo apt install zeek
 
-# Analisi PCAP
+<span class="comment"># Analisi PCAP: genera log nella cartella corrente</span>
 zeek -r traffico.pcap
 
-# Log generati
+<span class="comment"># Log generati</span>
 ls *.log
-# conn.log, dns.log, http.log, ssl.log, files.log, weird.log
+<span class="comment"># conn.log, dns.log, http.log, ssl.log, files.log, weird.log</span>
 
-# Leggere conn.log
+<span class="comment"># Leggere conn.log con zeek-cut</span>
 cat conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto duration
 
-# Filtrare DNS
+<span class="comment"># Filtrare DNS per query più frequenti</span>
 cat dns.log | zeek-cut query | sort | uniq -c | sort -rn | head</pre>
 
   <h3>Volatility 3</h3>
-  <pre># Info
+  <pre><span class="comment"># Info dump (sempre il primo comando)</span>
 vol -f memory.raw windows.info
 
-# Processi
-vol -f memory.raw windows.pslist
-vol -f memory.raw windows.psscan
-vol -f memory.raw windows.pstree
-vol -f memory.raw windows.cmdline
-vol -f memory.raw windows.dlllist --pid &lt;PID&gt;
+<span class="comment"># Processi</span>
+vol -f memory.raw windows.pslist                <span class="comment"># lista canonica</span>
+vol -f memory.raw windows.psscan                <span class="comment"># pool scan (nascosti)</span>
+vol -f memory.raw windows.pstree                <span class="comment"># albero parent/child</span>
+vol -f memory.raw windows.cmdline               <span class="comment"># argomenti processo</span>
+vol -f memory.raw windows.dlllist --pid &lt;PID&gt;   <span class="comment"># DLL in un processo</span>
 
-# Rete
-vol -f memory.raw windows.netscan
+<span class="comment"># Rete</span>
+vol -f memory.raw windows.netscan               <span class="comment"># connessioni e socket</span>
 
-# Code injection
-vol -f memory.raw windows.malfind
-vol -f memory.raw windows.vadinfo --pid &lt;PID&gt;
+<span class="comment"># Code injection</span>
+vol -f memory.raw windows.malfind               <span class="comment"># pagine RWX con MZ header</span>
+vol -f memory.raw windows.vadinfo --pid &lt;PID&gt;   <span class="comment"># dettagli regioni memoria</span>
 
-# Credenziali
-vol -f memory.raw windows.hashdump
-vol -f memory.raw windows.lsadump
-vol -f memory.raw windows.cachedump
+<span class="comment"># Credenziali</span>
+vol -f memory.raw windows.hashdump              <span class="comment"># hash NTLM locali</span>
+vol -f memory.raw windows.lsadump               <span class="comment"># segreti LSA</span>
+vol -f memory.raw windows.cachedump             <span class="comment"># credenziali cached</span>
 
-# Registry
-vol -f memory.raw windows.registry.hivelist
+<span class="comment"># Registry</span>
+vol -f memory.raw windows.registry.hivelist     <span class="comment"># lista hive</span>
 vol -f memory.raw windows.registry.printkey --key "Software\Microsoft\Windows\CurrentVersion\Run"
-vol -f memory.raw windows.registry.userassist
+vol -f memory.raw windows.registry.userassist   <span class="comment"># programmi lanciati da GUI</span>
 
-# Rootkit
-vol -f memory.raw windows.callbacks
-vol -f memory.raw windows.ssdt
-vol -f memory.raw windows.driverscan
+<span class="comment"># Rootkit</span>
+vol -f memory.raw windows.callbacks             <span class="comment"># callback registrate</span>
+vol -f memory.raw windows.ssdt                  <span class="comment"># SSDT hook</span>
+vol -f memory.raw windows.driverscan            <span class="comment"># driver caricati</span>
 
-# Dump processo
+<span class="comment"># Dump processo sospetto per analisi separata</span>
 vol -f memory.raw windows.memmap --pid &lt;PID&gt; --dump
 vol -f memory.raw windows.dumpfiles --pid &lt;PID&gt;</pre>
 
   <h3>Eric Zimmerman Tools</h3>
-  <pre># EvtxECmd
+  <pre><span class="comment"># EvtxECmd - parser .evtx</span>
 EvtxECmd.exe -d C:\Logs\ --csv C:\Output\ --csvf events.csv
-EvtxECmd.exe -d C:\Logs\ --maps "Path\to\Maps\" --csv C:\Output\
+EvtxECmd.exe -d C:\Logs\ --maps "Path\to\Maps\" --csv C:\Output\  <span class="comment"># con arricchimento</span>
 
-# MFTECmd
+<span class="comment"># MFTECmd - parser $MFT, $LogFile, $UsnJrnl</span>
 MFTECmd.exe -f C:\Evidence\$MFT --csv C:\Output\ --csvf mft.csv
 MFTECmd.exe -f C:\Evidence\$J --csv C:\Output\ --csvf usn.csv
 
-# PECmd
+<span class="comment"># PECmd - parser Prefetch</span>
 PECmd.exe -d C:\Windows\Prefetch\ --csv C:\Output\ --csvf prefetch.csv
 
-# AmcacheParser
+<span class="comment"># AmcacheParser - parser Amcache.hve</span>
 AmcacheParser.exe -f C:\Windows\AppCompat\Programs\Amcache.hve --csv C:\Output\ --csvf amcache.csv
 
-# AppCompatCacheParser
+<span class="comment"># AppCompatCacheParser - parser ShimCache</span>
 AppCompatCacheParser.exe -f C:\Evidence\SYSTEM --csv C:\Output\ --csvf shimcache.csv
 
-# LECmd
+<span class="comment"># LECmd - parser LNK</span>
 LECmd.exe -d C:\Users\user\AppData\Roaming\Microsoft\Windows\Recent\ --csv C:\Output\ --csvf lnk.csv
 
-# JLECmd
+<span class="comment"># JLECmd - parser JumpList</span>
 JLECmd.exe -d C:\Users\user\AppData\Roaming\Microsoft\Windows\Recent\ --csv C:\Output\ --csvf jumplists.csv
 
-# SBECmd
+<span class="comment"># SBECmd - parser ShellBags</span>
 SBECmd.exe -d C:\Evidence\UserProfiles\ --csv C:\Output\ --csvf shellbags.csv
 
-# RBCmd
+<span class="comment"># RBCmd - parser Recycle Bin</span>
 RBCmd.exe -d C:\$Recycle.Bin\ --csv C:\Output\ --csvf recyclebin.csv
 
-# SrumECmd
+<span class="comment"># SrumECmd - parser SRUM</span>
 SrumECmd.exe -f C:\Windows\System32\sru\SRUDB.dat -r C:\Evidence\SOFTWARE --csv C:\Output\
 
-# WxTCmd
+<span class="comment"># WxTCmd - parser Windows Timeline</span>
 WxTCmd.exe -f C:\Users\user\AppData\Local\...\ActivitiesCache.db --csv C:\Output\
 
-# KAPE
+<span class="comment"># KAPE - triage + parsing automatico</span>
 kape.exe --tsource C: --target !BasicCollection --tdest C:\Triage\
 kape.exe --tsource C: --target !BasicCollection --tdest C:\Triage\ --mdest C:\Parsed\ --module !EZParser</pre>
 
   <h3>Chainsaw / Hayabusa / DeepBlueCLI</h3>
-  <pre># Chainsaw
+  <pre><span class="comment"># Chainsaw - hunting su .evtx con regole Sigma</span>
 chainsaw hunt /path/to/evtx/ --sigma /path/to/sigma/rules/ --mapping /path/to/mappings/sigma-event-logs-all.yml --output results.csv --csv
 
-# Hayabusa
+<span class="comment"># Hayabusa - scan completo con timeline</span>
 hayabusa.exe csv-timeline -d /path/to/evtx/ -o timeline.csv
 
-# DeepBlueCLI
+<span class="comment"># DeepBlueCLI - PowerShell, script leggibile</span>
 .\DeepBlue.ps1 -log .\Security.evtx</pre>
 
   <h3>Plaso / log2timeline</h3>
-  <pre># Crea supertimeline
+  <pre><span class="comment"># Crea supertimeline da disk image</span>
 log2timeline.py --storage-file timeline.plaso /path/to/evidence/
 
-# Esporta CSV
+<span class="comment"># Esporta CSV</span>
 psort.py -o l2tcsv -w timeline.csv timeline.plaso
 
-# Filtra per data
+<span class="comment"># Filtra per data</span>
 psort.py -o l2tcsv -w timeline.csv timeline.plaso "date &gt; '2026-04-15 09:00:00'"
 
-# Navigazione: Timeline Explorer o Timesketch</pre>
+<span class="comment"># Navigazione: Timeline Explorer o Timesketch</span></pre>
 
   <h3>The Sleuth Kit (TSK)</h3>
-  <pre># Layout partizioni
+  <pre><span class="comment"># Layout partizioni di un disk image</span>
 mmls evidence.dd
 
-# Info filesystem
+<span class="comment"># Info filesystem (offset partizione)</span>
 fsstat -o 2048 evidence.dd
 
-# Elenca file (anche cancellati)
+<span class="comment"># Elenca file (anche cancellati) su una partizione</span>
 fls -r -o 2048 evidence.dd
 
-# Dettagli inode
+<span class="comment"># Dettagli di un inode specifico</span>
 istat -o 2048 evidence.dd 42315
 
-# Estrai contenuto file
+<span class="comment"># Estrai contenuto di un file via inode</span>
 icat -o 2048 evidence.dd 42315 &gt; recovered_file.pdf</pre>
 
   <h3>File Carving</h3>
-  <pre># PhotoRec
+  <pre><span class="comment"># PhotoRec - recupera foto e documenti da schede SD, dischi</span>
 sudo photorec
 
-# Foremost
+<span class="comment"># Foremost - recupera tutti i JPG da un disk image</span>
 foremost -t jpg -i evidence.dd -o recovered/
 
-# Scalpel
+<span class="comment"># Scalpel - configurable tramite scalpel.conf</span>
 scalpel -c scalpel.conf evidence.dd -o output/
 
-# bulk_extractor
+<span class="comment"># bulk_extractor - carving di feature (email, URL, IP, carte credito)</span>
 bulk_extractor -o output/ evidence.dd</pre>
 
   <h3>Steganografia (Blue side)</h3>
-  <pre># Analisi base
+  <pre><span class="comment"># Analisi base</span>
 file immagine.png
 exiftool immagine.png
 binwalk immagine.png
 strings immagine.png | less
-zsteg -a immagine.png
-steghide info immagine.jpg
-stegseek immagine.jpg rockyou.txt
+zsteg -a immagine.png                <span class="comment"># LSB analysis automatica</span>
+steghide info immagine.jpg           <span class="comment"># verifica presenza payload</span>
+stegseek immagine.jpg rockyou.txt    <span class="comment"># crack passphrase steghide</span>
 
-# Estrazione file appesi
+<span class="comment"># Estrazione file appesi (binwalk)</span>
 binwalk -e immagine.png
 foremost -t jpg -i disk.img -o recovered/</pre>
 
   <h3>Malware Analysis - Static</h3>
-  <pre># Hash
+  <pre><span class="comment"># Hash (SHA-256 per identificazione univoca)</span>
 sha256sum sample.exe
 
-# Detect It Easy
+<span class="comment"># Detect It Easy: packer, compilatore, entropia</span>
 die sample.exe
 
-# PEstudio (GUI)
-# Apri sample.exe
+<span class="comment"># PEstudio (GUI): apri sample.exe</span>
 
-# capa
+<span class="comment"># capa: capability mappate ad ATT&CK</span>
 capa sample.exe
 
-# FLOSS
+<span class="comment"># FLOSS: stringhe normali + offuscate</span>
 floss sample.exe &gt; strings.txt
 
-# YARA
+<span class="comment"># YARA: pattern matching contro ruleset</span>
 yara -r signature-base/yara/ sample.exe</pre>
 
   <h3>Malware Analysis - Documents</h3>
-  <pre># Office
-olevba documento.docm
-oleid documento.docm
-olemeta documento.docm
-rtfobj documento.rtf
+  <pre><span class="comment"># Office</span>
+olevba documento.docm       <span class="comment"># estrae e disassembla macro VBA</span>
+oleid documento.docm        <span class="comment"># identifica tipo documento</span>
+olemeta documento.docm      <span class="comment"># metadata</span>
+rtfobj documento.rtf        <span class="comment"># oggetti embedded in RTF</span>
 
-# PDF
-pdfid.py documento.pdf
-pdf-parser.py documento.pdf
-peepdf documento.pdf
+<span class="comment"># PDF</span>
+pdfid.py documento.pdf      <span class="comment"># riepilogo indicatori rapidi</span>
+pdf-parser.py documento.pdf <span class="comment"># dettaglio oggetti</span>
+peepdf documento.pdf        <span class="comment"># analisi interattiva</span>
 
-# LNK
+<span class="comment"># LNK</span>
 LECmd.exe -f file.lnk
 
-# JS/VBS
-js-beautify script.js
-box-js script.js
-ViperMonkey macro.vba</pre>
+<span class="comment"># JS/VBS</span>
+js-beautify script.js        <span class="comment"># formatta JS offuscato</span>
+box-js script.js             <span class="comment"># esegue JS in sandbox</span>
+ViperMonkey macro.vba        <span class="comment"># emula VBA</span></pre>
 
   <h3>Linux Log Analysis</h3>
-  <pre># syslog
+  <pre><span class="comment"># syslog</span>
 grep "Failed password" /var/log/auth.log | awk '{print $11}' | sort | uniq -c | sort -rn | head
 grep "sudo:" /var/log/auth.log | tail -50
 grep -B2 -A2 "break-in attempt" /var/log/auth.log
 
-# journalctl
-journalctl -b
-journalctl -p err
-journalctl -u nginx
+<span class="comment"># journalctl</span>
+journalctl -b                                          <span class="comment"># boot corrente</span>
+journalctl -p err                                      <span class="comment"># solo errori</span>
+journalctl -u nginx                                    <span class="comment"># solo unit nginx</span>
 journalctl --since "2026-04-15 09:00" --until "2026-04-15 17:00"
-journalctl -o json -u sshd
+journalctl -o json -u sshd                             <span class="comment"># output JSON</span>
 
-# auditd
-ausearch -k user_modify
-ausearch --start today -m USER_LOGIN
-aureport --summary</pre>
+<span class="comment"># auditd</span>
+ausearch -k user_modify                                <span class="comment"># eventi con chiave</span>
+ausearch --start today -m USER_LOGIN                   <span class="comment"># login di oggi</span>
+aureport --summary                                     <span class="comment"># riepilogo</span></pre>
 
   <h3>Windows Event Log - Query rapide</h3>
-  <pre># PowerShell - eventi recenti
+  <pre><span class="comment"># PowerShell - eventi recenti</span>
 Get-WinEvent -LogName Security -MaxEvents 100
 
-# Filtrare per Event ID
+<span class="comment"># Filtrare per Event ID</span>
 Get-WinEvent -FilterHashtable @{LogName='Security'; ID=4625} -MaxEvents 50
 
-# Eventi in un range temporale
+<span class="comment"># Eventi in un range temporale</span>
 Get-WinEvent -FilterHashtable @{LogName='Security'; StartTime=(Get-Date).AddHours(-24)} -MaxEvents 100
 
-# Logon falliti per utente
+<span class="comment"># Logon falliti per utente (raggruppati)</span>
 Get-WinEvent -FilterHashtable @{LogName='Security'; ID=4625} | Group-Object {$_.Properties[5].Value} | Sort-Object Count -Descending
 
-# Processi creati (4688)
+<span class="comment"># Processi creati (4688)</span>
 Get-WinEvent -FilterHashtable @{LogName='Security'; ID=4688} -MaxEvents 50
 
-# Sysmon processi
+<span class="comment"># Sysmon processi</span>
 Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' -FilterXPath "*[System[EventID=1]]" -MaxEvents 20</pre>
 
   <h3>Strumenti di rete utili</h3>
-  <pre># NetworkMiner (GUI)
-# Carica PCAP -> estrae file, credenziali, host
+  <pre><span class="comment"># NetworkMiner (GUI)</span>
+<span class="comment"># Carica PCAP -> estrae file, credenziali, host</span>
 
-# RITA (beacon detection)
+<span class="comment"># RITA (beacon detection)</span>
 rita import --logs /path/to/zeek/logs/ --name dataset
 
-# Suricata (IDS)
+<span class="comment"># Suricata (IDS)</span>
 suricata -r traffic.pcap -l /var/log/suricata/
 
-# Arkime (full packet capture)
-# Web UI per navigazione PCAP grandi</pre>
+<span class="comment"># Arkime (full packet capture)</span>
+<span class="comment"># Web UI per navigazione PCAP grandi</span></pre>
 
   <h3>Timeline - correlazione</h3>
-  <pre># Tutti gli artefatti in una timeline
+  <pre><span class="comment"># Tutti gli artefatti in una timeline</span>
 log2timeline.py --storage-file timeline.plaso evidence.dd
 psort.py -o l2tcsv -w timeline.csv timeline.plaso
 
-# Apri in Timeline Explorer
-# Filtra per:
-#   - Finestra temporale sospetta
-#   - Tipo artefatto (MFT, Prefetch, EventLog)
-#   - Keyword (nome malware, IP, dominio)</pre>
+<span class="comment"># Apri in Timeline Explorer</span>
+<span class="comment"># Filtra per:</span>
+<span class="comment">#   - Finestra temporale sospetta</span>
+<span class="comment">#   - Tipo artefatto (MFT, Prefetch, EventLog)</span>
+<span class="comment">#   - Keyword (nome malware, IP, dominio)</span></pre>
 
   <h3>Hash e integrità</h3>
-  <pre># Windows
+  <pre><span class="comment"># Windows</span>
 Get-FileHash .\file.exe -Algorithm SHA256
 
-# Linux
+<span class="comment"># Linux</span>
 sha256sum file.exe
 md5sum file.exe
 
-# Verifica integrità disk image
+<span class="comment"># Verifica integrità disk image</span>
 sha256sum evidence.dd
-# Confronta con hash calcolato durante imaging</pre>
+<span class="comment"># Confronta con hash calcolato durante imaging</span></pre>
 
   <h3>Comandi rapidi - riepilogo</h3>
   <table>
@@ -1642,7 +1859,6 @@ sha256sum evidence.dd
   const sections = document.querySelectorAll('section');
   const noResults = document.getElementById('noResults');
 
-  // Salva il contenuto originale di ogni elemento testuale per ripristinarlo
   const originalHTML = new Map();
   document.querySelectorAll('section h2, section h3, section h4, section p, section li, section td, section th, section pre, section code').forEach(el => {
     originalHTML.set(el, el.innerHTML);
@@ -1666,7 +1882,6 @@ sha256sum evidence.dd
 
     const regex = new RegExp('(' + escapeRegex(term) + ')', 'gi');
     if (!regex.test(original)) return false;
-
     if (term.includes('<') || term.includes('>')) return false;
 
     el.innerHTML = original.replace(regex, '<mark>$1</mark>');
@@ -1675,7 +1890,6 @@ sha256sum evidence.dd
 
   function performSearch() {
     const query = searchInput.value.trim().toLowerCase();
-
     clearHighlights();
 
     if (!query) {
